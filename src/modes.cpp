@@ -96,16 +96,12 @@ bool ask_save(const fs::path &target) {
 }
 
 int finish_single(const AppConfig &cfg, const SingleRunResult &run) {
-  constexpr const char *INV = "\x1b[7m";
-  constexpr const char *RST = "\x1b[0m";
-
-  std::cout << '\n'
-            << INV << "[result] cpu " << run.result.cpu_time.count() << " ms"
+  std::cout << "\n[result] cpu " << run.result.cpu_time.count() << " ms"
             << " | wall " << run.result.wall_time.count() << " ms"
             << " | mem " << format_memory(run.result.memory_bytes) << " | "
             << (run.result.status == RunnerStatus::Success ? "success"
                                                            : "failed")
-            << " (" << run.result.message << RST << ")\n";
+            << " (" << run.result.message << ")\n";
 
   if (cfg.single_output.empty()) {
     std::cout << "[save] [io].single_output is not configured, nothing saved\n";
