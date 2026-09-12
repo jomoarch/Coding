@@ -7,7 +7,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(Coding
   src/main.cpp
+  src/modes.cpp
   src/runner.cpp
+  src/runner_single.cpp
   src/runner_batch.cpp
   src/config.cpp
   src/compiler.cpp

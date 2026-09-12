@@ -88,6 +88,8 @@ ConfigResult load_config(const std::filesystem::path &path) {
   c.work_dir = resolve(base, c.work_dir);
   c.input_dir = resolve(base, c.input_dir);
   c.output_dir = resolve(base, c.output_dir);
+  c.single_input = resolve(base, c.single_input);
+  c.single_output = resolve(base, c.single_output);
 
   if (c.source_path.empty()) {
     r.message = "Config: [compiler].source is required";

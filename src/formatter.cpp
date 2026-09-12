@@ -4,18 +4,16 @@
 #include <sstream>
 #include <algorithm>
 
-namespace {
-
 std::string format_memory(std::size_t bytes) {
   if (bytes == 0)
     return "0.00  B";
 
   static const char *units[] = {"  B", " KB", " MB", " GB"};
-  constexpr int last = 3;
+  constexpr int last_unit = 3;
 
   double v = static_cast<double>(bytes);
   int i = 0;
-  while (v >= 1023.955 && i < last) {
+  while (v >= 1023.955 && i < last_unit) {
     v /= 1024.0;
     ++i;
   }
@@ -24,8 +22,6 @@ std::string format_memory(std::size_t bytes) {
   oss << std::fixed << std::setprecision(2) << v << units[i];
   return oss.str();
 }
-
-} // namespace
 
 std::vector<std::string> format_results(const std::vector<ResultUnit> &results,
                                         bool show_message,

@@ -1,144 +1,114 @@
-#include "compiler.hpp"
 #include "config.hpp"
-#include "formatter.hpp"
-#include "iofile.hpp"
-#include "runner_batch.hpp"
+#include "modes.hpp"
+
+#include <windows.h>
 
 #include <filesystem>
 #include <iostream>
 #include <string>
 
-namespace fs = std::filesystem;
-
 namespace {
 
-struct RebuildCheck {
-  bool needed{true};
-  std::string reason;
+enum class Mode { Batch, Single, Interactive };
+
+class ConsoleUtf8Scope {
+public:
+  ConsoleUtf8Scope() {
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD mode = 0;
+    if (hOut == nullptr || hOut == INVALID_HANDLE_VALUE ||
+        !GetConsoleMode(hOut, &mode))
+      return;
+
+    out_cp_ = GetConsoleOutputCP();
+    in_cp_ = GetConsoleCP();
+    if (out_cp_ != CP_UTF8)
+      SetConsoleOutputCP(CP_UTF8);
+    if (in_cp_ != CP_UTF8)
+      SetConsoleCP(CP_UTF8);
+  }
+
+  ~ConsoleUtf8Scope() {
+    std::cout.flush();
+    std::cerr.flush();
+    if (out_cp_ != 0 && out_cp_ != CP_UTF8)
+      SetConsoleOutputCP(out_cp_);
+    if (in_cp_ != 0 && in_cp_ != CP_UTF8)
+      SetConsoleCP(in_cp_);
+  }
+
+  ConsoleUtf8Scope(const ConsoleUtf8Scope &) = delete;
+  ConsoleUtf8Scope &operator=(const ConsoleUtf8Scope &) = delete;
+
+private:
+  UINT out_cp_{0};
+  UINT in_cp_{0};
 };
 
-RebuildCheck check_rebuild(const AppConfig &cfg,
-                           const std::filesystem::path &config_path) {
-  RebuildCheck r;
-
-  std::error_code ec;
-  if (!std::filesystem::is_regular_file(cfg.exe_path, ec)) {
-    r.reason = "output missing (" + cfg.exe_path.filename().string() + ")";
-    return r;
-  }
-
-  const auto exe_time = std::filesystem::last_write_time(cfg.exe_path, ec);
-  if (ec) {
-    r.reason = "output timestamp unreadable (" + ec.message() + ")";
-    return r;
-  }
-
-  std::string reasons;
-  auto is_newer = [&](const std::filesystem::path &p, const char *label) {
-    std::error_code e;
-    const auto t = std::filesystem::last_write_time(p, e);
-    if (e)
-      return;
-    if (t > exe_time)
-      reasons += std::string(reasons.empty() ? "" : ", ") + label + " modified";
-  };
-
-  is_newer(cfg.source_path, "source");
-  is_newer(config_path, "config");
-
-  if (reasons.empty()) {
-    r.needed = false;
-    r.reason = "up to date (" + cfg.exe_path.filename().string() + ")";
-  } else {
-    r.reason = reasons;
-  }
-  return r;
+void print_usage(const char *argv0) {
+  std::cerr
+      << "Usage: " << argv0 << " [config.toml] [mode]\n"
+      << "\n"
+      << "Modes (default: -b):\n"
+      << "  -i, --interactive  终端直接输入输出，结束后询问是否保存输出\n"
+      << "  -s, --single       从 [io].single_input 读输入并打印，结束后询问\n"
+      << "                     是否保存输出到 [io].single_output\n"
+      << "  -b, --batch        批量跑 [io].input_dir 下的用例，写入 "
+         "[io].output_dir\n"
+      << "\n"
+      << "Options:\n"
+      << "  -h, --help         显示本帮助\n"
+      << "\n"
+      << "Exit codes: 0 = success, 1 = run failed, 2 = tool/system error\n";
 }
 
 } // namespace
 
 int main(int argc, char **argv) {
-  fs::path config_path = "config.toml";
+  const ConsoleUtf8Scope console_utf8;
+
+  std::filesystem::path config_path = "config.toml";
+  Mode mode = Mode::Batch;
+
+  for (int i = 1; i < argc; ++i) {
+    const std::string arg = argv[i];
+    if (arg == "-h" || arg == "--help") {
+      print_usage(argv[0]);
+      return 0;
+    }
+    if (arg == "-i" || arg == "--interactive") {
+      mode = Mode::Interactive;
+      continue;
+    }
+    if (arg == "-s" || arg == "--single") {
+      mode = Mode::Single;
+      continue;
+    }
+    if (arg == "-b" || arg == "--batch") {
+      mode = Mode::Batch;
+      continue;
+    }
+    if (!arg.empty() && arg.front() == '-') {
+      std::cerr << "Unknown option: " << arg << "\n\n";
+      print_usage(argv[0]);
+      return 2;
+    }
+    config_path = arg;
+  }
 
   auto cfg_res = load_config(config_path);
   if (!cfg_res.success) {
     std::cerr << "[config] " << cfg_res.message << "\n";
-    return 1;
-  }
-  const AppConfig &cfg = cfg_res.config;
-
-  std::cout << "Config: " << config_path << "\n"
-            << "  source    : " << cfg.source_path.string() << "\n"
-            << "  exe       : " << cfg.exe_path.string() << "\n"
-            << "  input_dir : " << cfg.input_dir.string() << "\n"
-            << "  output_dir: " << cfg.output_dir.string() << "\n"
-            << "  args      : ";
-  for (const auto &a : cfg.args)
-    std::cout << '"' << a << "\" ";
-  std::cout << "\n"
-            << "  time      : " << cfg.time_limit.count() << " ms\n"
-            << "  memory    : " << (cfg.memory_limit_bytes >> 20) << " MB\n";
-
-  std::cout << "\n[1/3] Compiling...\n";
-  const RebuildCheck rebuild = check_rebuild(cfg, config_path);
-
-  if (!rebuild.needed) {
-    std::cout << "      skipped: " << rebuild.reason << "\n";
-  } else {
-    std::cout << "      rebuild: " << rebuild.reason << "\n";
-
-    CompilerOptions comp_opts;
-    comp_opts.source_path = cfg.source_path;
-    comp_opts.output_path = cfg.exe_path;
-    comp_opts.args = cfg.args;
-
-    auto comp_res = compile_source(comp_opts);
-    if (!comp_res.success) {
-      std::cerr << "[compile] Failed:\n" << comp_res.message << "\n";
-      return 1;
-    }
-    std::cout << "      OK -> " << cfg.exe_path.string() << "\n";
+    return 2;
   }
 
-  std::cout << "\n[2/3] Preparing test cases...\n";
-  IOFileOption io_opts;
-  io_opts.input_dir = cfg.input_dir;
-  io_opts.output_dir = cfg.output_dir;
-
-  auto io_res = gen_filepair(io_opts);
-  if (!io_res.success) {
-    std::cerr << "[io] " << io_res.message << "\n";
-    return 1;
+  switch (mode) {
+  case Mode::Interactive:
+    return run_interactive(cfg_res.config);
+  case Mode::Single:
+    return run_single_file(cfg_res.config);
+  case Mode::Batch:
+    break;
   }
-  if (io_res.pairs.empty()) {
-    std::cerr << "[io] No .in files found in " << cfg.input_dir.string()
-              << "\n";
-    return 1;
-  }
-  std::cout << "      Found " << io_res.pairs.size() << " test case(s)\n";
-
-  std::cout << "\n[3/3] Running...\n";
-  BatchOptions batch;
-  batch.exe_path = cfg.exe_path;
-  batch.work_dir = cfg.work_dir;
-  batch.pairs = std::move(io_res.pairs);
-  batch.time_limit = cfg.time_limit;
-  batch.memory_limit_bytes = cfg.memory_limit_bytes;
-  batch.thread_max = cfg.thread_max;
-
-  auto results = run_all(batch);
-
-  std::size_t passed = 0;
-  for (const auto &u : results) {
-    if (u.result.status == RunnerStatus::Success)
-      ++passed;
-  }
-
-  std::cout << "\n";
-  for (const auto &line : format_results(results, true, true)) {
-    std::cout << line << "\n";
-  }
-  std::cout << "\n" << passed << " / " << results.size() << " passed\n";
-
-  return passed == results.size() ? 0 : 1;
+  return run_batch(cfg_res.config);
 }
