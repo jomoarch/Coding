@@ -116,7 +116,7 @@ IOFileResult gen_filepair(const IOFileOption &opts) {
   }
 
   std::sort(items.begin(), items.end(), [](const Item &a, const Item &b) {
-    return compare_name_key(a.key, b.key) < 0;
+    return compare_name_key(a.key, b.key);
   });
 
   for (std::size_t i = 1; i < items.size(); ++i) {

@@ -109,7 +109,6 @@ ConfigResult load_config(const std::filesystem::path &path) {
   }
 
   r.success = true;
-  r.config = std::move(c);
   r.message = "OK";
   return r;
 }
