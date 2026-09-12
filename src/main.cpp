@@ -12,25 +12,54 @@ namespace fs = std::filesystem;
 
 namespace {
 
-void print_usage(const char *argv0) {
-  std::cerr << "Usage: " << argv0 << " [config.toml]\n";
+struct RebuildCheck {
+  bool needed{true};
+  std::string reason;
+};
+
+RebuildCheck check_rebuild(const AppConfig &cfg,
+                           const std::filesystem::path &config_path) {
+  RebuildCheck r;
+
+  std::error_code ec;
+  if (!std::filesystem::is_regular_file(cfg.exe_path, ec)) {
+    r.reason = "output missing (" + cfg.exe_path.filename().string() + ")";
+    return r;
+  }
+
+  const auto exe_time = std::filesystem::last_write_time(cfg.exe_path, ec);
+  if (ec) {
+    r.reason = "output timestamp unreadable (" + ec.message() + ")";
+    return r;
+  }
+
+  std::string reasons;
+  auto is_newer = [&](const std::filesystem::path &p, const char *label) {
+    std::error_code e;
+    const auto t = std::filesystem::last_write_time(p, e);
+    if (e)
+      return;
+    if (t > exe_time)
+      reasons += std::string(reasons.empty() ? "" : ", ") + label + " modified";
+  };
+
+  is_newer(cfg.source_path, "source");
+  is_newer(config_path, "config");
+
+  if (reasons.empty()) {
+    r.needed = false;
+    r.reason = "up to date (" + cfg.exe_path.filename().string() + ")";
+  } else {
+    r.reason = reasons;
+  }
+  return r;
 }
 
 } // namespace
 
 int main(int argc, char **argv) {
-  // 1) 解析命令行：可选传入配置文件路径，默认 "config.toml"
   fs::path config_path = "config.toml";
-  if (argc >= 2) {
-    std::string arg = argv[1];
-    if (arg == "-h" || arg == "--help") {
-      print_usage(argv[0]);
-      return 0;
-    }
-    config_path = arg;
-  }
 
-  // 2) 加载配置
   auto cfg_res = load_config(config_path);
   if (!cfg_res.success) {
     std::cerr << "[config] " << cfg_res.message << "\n";
@@ -50,21 +79,27 @@ int main(int argc, char **argv) {
             << "  time      : " << cfg.time_limit.count() << " ms\n"
             << "  memory    : " << (cfg.memory_limit_bytes >> 20) << " MB\n";
 
-  // 3) 编译
   std::cout << "\n[1/3] Compiling...\n";
-  CompilerOptions comp_opts;
-  comp_opts.source_path = cfg.source_path;
-  comp_opts.output_path = cfg.exe_path;
-  comp_opts.args = cfg.args;
+  const RebuildCheck rebuild = check_rebuild(cfg, config_path);
 
-  auto comp_res = compile_source(comp_opts);
-  if (!comp_res.success) {
-    std::cerr << "[compile] Failed:\n" << comp_res.message << "\n";
-    return 1;
+  if (!rebuild.needed) {
+    std::cout << "      skipped: " << rebuild.reason << "\n";
+  } else {
+    std::cout << "      rebuild: " << rebuild.reason << "\n";
+
+    CompilerOptions comp_opts;
+    comp_opts.source_path = cfg.source_path;
+    comp_opts.output_path = cfg.exe_path;
+    comp_opts.args = cfg.args;
+
+    auto comp_res = compile_source(comp_opts);
+    if (!comp_res.success) {
+      std::cerr << "[compile] Failed:\n" << comp_res.message << "\n";
+      return 1;
+    }
+    std::cout << "      OK -> " << cfg.exe_path.string() << "\n";
   }
-  std::cout << "      OK -> " << cfg.exe_path.string() << "\n";
 
-  // 4) 准备 IO
   std::cout << "\n[2/3] Preparing test cases...\n";
   IOFileOption io_opts;
   io_opts.input_dir = cfg.input_dir;
@@ -82,7 +117,6 @@ int main(int argc, char **argv) {
   }
   std::cout << "      Found " << io_res.pairs.size() << " test case(s)\n";
 
-  // 5) 并发执行
   std::cout << "\n[3/3] Running...\n";
   BatchOptions batch;
   batch.exe_path = cfg.exe_path;
@@ -94,7 +128,6 @@ int main(int argc, char **argv) {
 
   auto results = run_all(batch);
 
-  // 6) 统计 + 输出
   std::size_t passed = 0;
   for (const auto &u : results) {
     if (u.result.status == RunnerStatus::Success)

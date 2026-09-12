@@ -25,6 +25,7 @@ ConfigResult load_config(const std::filesystem::path &path) {
     r.message = "Config not found: " + path.string();
     return r;
   }
+  r.config.config_path = path;
 
   toml::table tbl;
   try {
@@ -69,6 +70,10 @@ ConfigResult load_config(const std::filesystem::path &path) {
       c.input_dir = *v;
     if (auto v = (*t)["output_dir"].value<std::string>())
       c.output_dir = *v;
+    if (auto v = (*t)["single_input"].value<std::string>())
+      c.single_input = *v;
+    if (auto v = (*t)["single_output"].value<std::string>())
+      c.single_output = *v;
   }
 
   // [thread]

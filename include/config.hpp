@@ -8,6 +8,8 @@
 #include <cstddef>
 
 struct AppConfig {
+  std::filesystem::path config_path;
+
   // compiler
   std::filesystem::path source_path;
   std::filesystem::path exe_path;
@@ -21,6 +23,8 @@ struct AppConfig {
   // io
   std::filesystem::path input_dir;
   std::filesystem::path output_dir;
+  std::filesystem::path single_input;
+  std::filesystem::path single_output;
 
   // thread
   std::size_t thread_max{1};

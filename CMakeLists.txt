@@ -14,6 +14,7 @@ add_executable(Coding
   src/formatter.cpp
   src/win_error.cpp
   src/iofile.cpp
+  src/builder.cpp
 )
 
 target_include_directories(Coding PRIVATE
