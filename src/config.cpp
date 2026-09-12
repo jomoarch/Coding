@@ -1,7 +1,4 @@
 #include "config.hpp"
-
-#define TOML_FLOAT128 0
-#define TOML_INT128 0
 #include "toml.hpp"
 
 #include <fstream>
