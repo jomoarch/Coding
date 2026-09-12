@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <iostream>
 #include <string>
+#include <conio.h>
 
 namespace {
 
@@ -102,13 +103,21 @@ int main(int argc, char **argv) {
     return 2;
   }
 
+  int code;
   switch (mode) {
   case Mode::Interactive:
-    return run_interactive(cfg_res.config);
+    code = run_interactive(cfg_res.config);
+    break;
   case Mode::Single:
-    return run_single_file(cfg_res.config);
+    code = run_single_file(cfg_res.config);
+    break;
   case Mode::Batch:
+    code = run_batch(cfg_res.config);
     break;
   }
-  return run_batch(cfg_res.config);
+
+  std::cout << "\nPress any key to exit ...";
+  _getch();
+
+  return code;
 }
