@@ -5,8 +5,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(Coding
-  src/main.cpp
+if(NOT WIN32)
+  message(FATAL_ERROR "This project only supports Windows.")
+endif()
+
+set(COMMON_SOURCES
   src/modes.cpp
   src/runner.cpp
   src/runner_single.cpp
@@ -19,14 +22,28 @@ add_executable(Coding
   src/builder.cpp
 )
 
-target_include_directories(Coding PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
+set(APP_VARIANTS
+  "main.cpp|cg"
+  "main_batch.cpp|cg_b"
+  "main_single.cpp|cg_s"
+  "main_interactive.cpp|cg_i"
 )
 
-set_target_properties(Coding PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-)
+foreach(variant ${APP_VARIANTS})
+  string(REPLACE "|" ";" parts "${variant}")
+  list(GET parts 0 main_src)
+  list(GET parts 1 exe_name)
 
-if(NOT WIN32)
-  message(FATAL_ERROR "This project only supports Windows.")
-endif()
+  add_executable(${exe_name}
+    src/${main_src}
+    ${COMMON_SOURCES}
+  )
+
+  target_include_directories(${exe_name} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+  )
+
+  set_target_properties(${exe_name} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  )
+endforeach()

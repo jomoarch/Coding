@@ -1,12 +1,4 @@
-#include "config.hpp"
-#include "modes.hpp"
-
-#include <windows.h>
-
-#include <filesystem>
-#include <iostream>
-#include <string>
-#include <conio.h>
+#include "header.hpp"
 
 namespace {
 
