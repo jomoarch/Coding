@@ -1,4 +1,5 @@
 #include "formatter.hpp"
+#include "color.hpp"
 
 #include <iomanip>
 #include <sstream>
@@ -37,6 +38,7 @@ std::vector<std::string> format_results(const std::vector<ResultUnit> &results,
     std::string cpu;
     std::string mem;
     std::string msg;
+    RunnerStatus status;
   };
 
   std::vector<Row> rows;
@@ -54,6 +56,8 @@ std::vector<std::string> format_results(const std::vector<ResultUnit> &results,
     row.mem = format_memory(u.result.memory_bytes);
 
     row.msg = u.result.message;
+
+    row.status = u.result.status;
 
     w_name = std::max(w_name, row.name.size());
     w_wall = std::max(w_wall, row.wall.size());
@@ -79,7 +83,29 @@ std::vector<std::string> format_results(const std::vector<ResultUnit> &results,
       line << row.msg;
     }
 
-    out.push_back(line.str());
+    std::string o = line.str();
+    switch (row.status) {
+    case RunnerStatus::Success: {
+      o = color::paint(o, {color::Code::Bold, color::Code::Green});
+      break;
+    }
+    case RunnerStatus::TimeLimitExceeded:
+    case RunnerStatus::MemoryLimitExceeded: {
+      o = color::paint(o, {color::Code::BgWhite, color::Code::Black});
+      break;
+    }
+    case RunnerStatus::RuntimeError: {
+      o = color::paint(o, {color::Code::Bold, color::Code::Magenta});
+      break;
+    }
+    case RunnerStatus::SystemError: {
+      o = color::paint(o, {color::Code::Bold, color::Code::BrightMagenta});
+    }
+    default:
+      break;
+    }
+
+    out.push_back(o);
   }
   return out;
 }

@@ -1,6 +1,8 @@
 #include "header.hpp"
 
 int main() {
+  color::install();
+
   std::filesystem::path config_path = "config.toml";
   auto cfg_res = load_config(config_path);
   if (!cfg_res.success) {

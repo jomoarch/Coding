@@ -5,6 +5,7 @@
 #include "iofile.hpp"
 #include "runner_batch.hpp"
 #include "runner_single.hpp"
+#include "color.hpp"
 
 #include <windows.h>
 
@@ -37,16 +38,16 @@ BuildStep build_step(const AppConfig &cfg) {
   s.ok = br.success;
   s.rebuilt = br.rebuilt;
   if (!s.ok)
-    std::cerr << "[compile] Failed:\n" << br.message << "\n";
+    std::cerr << color::err("[compile] Failed:\n" + br.message) << "\n";
   return s;
 }
 
 void print_build_line(const AppConfig &cfg, const BuildStep &s) {
   if (s.rebuilt)
-    std::cout << "[build] built -> " << cfg.exe_path.string() << "\n";
+    std::cout << "[build] built -> " + cfg.exe_path.string() + '\n';
   else
-    std::cout << "[build] up-to-date (" << cfg.exe_path.filename().string()
-              << ")\n";
+    std::cout << "[build] up-to-date (" + cfg.exe_path.filename().string() +
+                     ")\n";
 }
 
 std::string trim_lower(std::string s) {
@@ -83,36 +84,65 @@ bool ask_save(const fs::path &target) {
 
   std::string line;
   if (!std::getline(std::cin, line)) {
-    std::cout << "\n[save] skipped (stdin closed)\n";
+    std::cout << "\n" << color::info("[save] skipped (stdin closed)") << "\n";
     return false;
   }
 
   const std::string ans = trim_lower(line);
   if (ans != "y" && ans != "yes") {
-    std::cout << "[save] skipped\n";
+    std::cout << color::info("[save] skipped") << "\n";
     return false;
   }
   return true;
 }
 
 int finish_single(const AppConfig &cfg, const SingleRunResult &run) {
+  auto status = [&]() -> std::string {
+    switch (run.result.status) {
+    case RunnerStatus::Success:
+      return color::ok("success");
+    case RunnerStatus::TimeLimitExceeded:
+      return color::err("TLE");
+    case RunnerStatus::MemoryLimitExceeded:
+      return color::err("MLE");
+    case RunnerStatus::RuntimeError:
+      return color::err("runtime error");
+    default:
+      return color::warn(run.result.message);
+    }
+  };
+
   std::ostringstream oss;
-  oss << "\n[result] cpu " << run.result.cpu_time.count() << " ms"
-      << " | wall " << run.result.wall_time.count() << " ms"
-      << " | mem " << format_memory(run.result.memory_bytes) << " | "
-      << (run.result.status == RunnerStatus::Success ? "success" : "failed")
-      << " (" << run.result.message << ")\n";
-  std::cout << '\n' << std::string(oss.str().size(), '-');
-  std::cout << oss.str();
+
+#define bg(s) color::paint(s, {color::Code::BgWhite, color::Code::Black})
+
+  oss << "\n[result] cpu " +
+             bg(std::to_string(run.result.cpu_time.count()) + " ms") +
+             " wall " +
+             bg(std::to_string(run.result.wall_time.count()) + " ms") +
+             " mem " + bg(format_memory(run.result.memory_bytes)) + "  " +
+             status()
+      << '\n';
+
+#undef bg
+
+  std::cout << '\n';
+
+  std::string out = oss.str();
+  std::cout << std::string(out.size(), '-');
+  std::cout << out;
 
   if (cfg.single_output.empty()) {
     std::cout << "[save] [io].single_output is not configured, nothing saved\n";
   } else if (ask_save(cfg.single_output)) {
     if (write_text(cfg.single_output, run.captured)) {
-      std::cout << "[save] saved " << run.captured.size() << " byte(s) -> "
-                << cfg.single_output.string() << "\n";
+      std::cout << color::ok(
+                       "[save] saved " + std::to_string(run.captured.size()) +
+                       std::string(" byte(s) -> ") + cfg.single_output.string())
+                << "\n";
     } else {
-      std::cerr << "[save] Failed to write " << cfg.single_output.string()
+      std::cerr << color::err("[save] Failed to write " +
+                              cfg.single_output.string())
                 << "\n";
       return 2;
     }
@@ -142,13 +172,15 @@ int run_interactive(const AppConfig &cfg) {
 
 int run_single_file(const AppConfig &cfg) {
   if (cfg.single_input.empty()) {
-    std::cerr << "[io] [io].single_input is required in -s mode\n";
+    std::cerr << color::err("[io] [io].single_input is required in -s mode")
+              << "\n";
     return 2;
   }
 
   std::ifstream in(cfg.single_input, std::ios::binary);
   if (!in) {
-    std::cerr << "[io] Cannot open single_input: " << cfg.single_input.string()
+    std::cerr << color::err("[io] Cannot open single_input: " +
+                            cfg.single_input.string())
               << "\n";
     return 2;
   }
@@ -192,7 +224,7 @@ int run_batch(const AppConfig &cfg) {
     return 2;
   if (built.rebuilt)
     std::cout << "      rebuild: source/config newer than output\n"
-              << "      OK -> " << cfg.exe_path.string() << "\n";
+              << color::ok("      OK -> " + cfg.exe_path.string()) << "\n";
   else
     std::cout << "      skipped: up-to-date ("
               << cfg.exe_path.filename().string() << ")\n";
@@ -204,15 +236,19 @@ int run_batch(const AppConfig &cfg) {
 
   auto io_res = gen_filepair(io_opts);
   if (!io_res.success) {
-    std::cerr << "[io] " << io_res.message << "\n";
+    std::cerr << color::err("[io] " + io_res.message) << "\n";
     return 2;
   }
   if (io_res.pairs.empty()) {
-    std::cerr << "[io] No .in files found in " << cfg.input_dir.string()
+    std::cerr << color::err("[io] No .in files found in " +
+                            cfg.input_dir.string())
               << "\n";
     return 2;
   }
-  std::cout << "      Found " << io_res.pairs.size() << " test case(s)\n";
+  std::cout << color::info("      Found " +
+                           std::to_string(io_res.pairs.size()) +
+                           std::string(" test case(s)"))
+            << "\n";
 
   std::cout << "\n[3/3] Running...\n";
   BatchOptions batch;

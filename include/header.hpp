@@ -3,6 +3,7 @@
 
 #include "config.hpp"
 #include "modes.hpp"
+#include "color.hpp"
 
 #include <windows.h>
 

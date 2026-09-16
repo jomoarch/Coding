@@ -89,9 +89,7 @@ inline std::string warn(std::string_view s) {
 inline std::string err(std::string_view s) {
   return paint(s, {Code::Bold, Code::Red});
 }
-inline std::string info(std::string_view s) {
-  return paint(s, {Code::Bold, Code::Cyan});
-}
+inline std::string info(std::string_view s) { return paint(s, {Code::Cyan}); }
 
 } // namespace color
 

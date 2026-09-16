@@ -54,7 +54,7 @@ std::string paint(std::string_view text, std::initializer_list<Code> codes) {
   std::string out;
   out.reserve(text.size() + codes.size() * 4 + 8);
 
-  out += '\x1b[';
+  out += "\033[";
   bool first = true;
   for (Code c : codes) {
     if (!first)
@@ -64,7 +64,7 @@ std::string paint(std::string_view text, std::initializer_list<Code> codes) {
   }
   out += 'm';
   out.append(text.data(), text.size());
-  out += "\x1b[0m";
+  out += "\033[0m";
   return out;
 }
 

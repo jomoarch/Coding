@@ -20,10 +20,10 @@ set(COMMON_SOURCES
   src/win_error.cpp
   src/iofile.cpp
   src/builder.cpp
+  src/color.cpp
 )
 
 set(APP_VARIANTS
-  "main.cpp|cg"
   "main_batch.cpp|cg_b"
   "main_single.cpp|cg_s"
   "main_interactive.cpp|cg_i"
