@@ -14,6 +14,7 @@ struct SingleRunOption {
   std::string input_text;
 
   bool echo{true};
+  bool colorize_output{false};
 };
 
 struct SingleRunResult {

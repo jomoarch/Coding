@@ -166,6 +166,7 @@ int run_interactive(const AppConfig &cfg) {
   opt.work_dir = cfg.work_dir;
   opt.stdin_from_console = true;
   opt.echo = true;
+  opt.colorize_output = true;
 
   return finish_single(cfg, run_single(opt));
 }

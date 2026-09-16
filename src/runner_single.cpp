@@ -2,6 +2,7 @@
 
 #include "handle.hpp"
 #include "win_error.hpp"
+#include "color.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -12,7 +13,13 @@
 
 namespace {
 
-void pump_to_terminal(HANDLE hRead, bool echo, std::string &sink) {
+void pump_to_terminal(HANDLE hRead, bool echo, std::string &sink,
+                      bool colorize) {
+  const bool use_color = colorize && color::enabled();
+  const char *kOn = use_color ? "\033[36m" : "";
+  const char *kOff = use_color ? "\033[0m" : "";
+  const bool has_on = (kOn[0] != '\0');
+
   std::vector<char> buf(4096);
   DWORD n = 0;
   while (ReadFile(hRead, buf.data(), static_cast<DWORD>(buf.size()), &n,
@@ -20,7 +27,11 @@ void pump_to_terminal(HANDLE hRead, bool echo, std::string &sink) {
          n > 0) {
     sink.append(buf.data(), n);
     if (echo) {
+      if (has_on)
+        std::cout << kOn;
       std::cout.write(buf.data(), static_cast<std::streamsize>(n));
+      if (has_on)
+        std::cout << kOff;
       std::cout.flush();
     }
   }
@@ -150,7 +161,7 @@ SingleRunResult run_single(const SingleRunOption &opts) {
 
   std::string captured;
   std::thread pump(pump_to_terminal, hOutRead.get(), opts.echo,
-                   std::ref(captured));
+                   std::ref(captured), opts.colorize_output);
 
   if (hStdinWrite.valid()) {
     std::size_t left = opts.input_text.size();
