@@ -3,6 +3,8 @@
 
 #include "runner.hpp"
 #include "runner_batch.hpp"
+#include <iostream>
+#include <ostream>
 
 #include <cstddef>
 #include <string>
@@ -10,7 +12,8 @@
 
 std::vector<std::string> format_results(const std::vector<ResultUnit> &results,
                                         bool show_message = true,
-                                        bool show_wall_time = false);
+                                        bool show_wall_time = false,
+                                        std::ostream &os = std::cout);
 
 std::string format_memory(std::size_t bytes);
 

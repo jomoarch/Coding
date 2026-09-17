@@ -25,8 +25,8 @@ std::string format_memory(std::size_t bytes) {
 }
 
 std::vector<std::string> format_results(const std::vector<ResultUnit> &results,
-                                        bool show_message,
-                                        bool show_wall_time) {
+                                        bool show_message, bool show_wall_time,
+                                        std::ostream &os) {
   std::vector<std::string> out;
   out.reserve(results.size());
   if (results.empty())
@@ -86,26 +86,27 @@ std::vector<std::string> format_results(const std::vector<ResultUnit> &results,
     std::string o = line.str();
     switch (row.status) {
     case RunnerStatus::Success: {
-      o = color::paint(o, {color::Code::Bold, color::Code::Green});
+      o = color::paint(os, o, {color::Code::Bold, color::Code::Green});
       break;
     }
     case RunnerStatus::TimeLimitExceeded:
     case RunnerStatus::MemoryLimitExceeded: {
-      o = color::paint(o, {color::Code::BgWhite, color::Code::Black});
+      o = color::paint(os, o, {color::Code::BgWhite, color::Code::Black});
       break;
     }
     case RunnerStatus::RuntimeError: {
-      o = color::paint(o, {color::Code::Bold, color::Code::Magenta});
+      o = color::paint(os, o, {color::Code::Bold, color::Code::Magenta});
       break;
     }
     case RunnerStatus::SystemError: {
-      o = color::paint(o, {color::Code::Bold, color::Code::BrightMagenta});
+      o = color::paint(os, o, {color::Code::Bold, color::Code::BrightMagenta});
+      break;
     }
     default:
       break;
     }
 
-    out.push_back(o);
+    out.push_back(std::move(o));
   }
   return out;
 }

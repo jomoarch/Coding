@@ -44,10 +44,10 @@ BuildStep build_step(const AppConfig &cfg) {
 
 void print_build_line(const AppConfig &cfg, const BuildStep &s) {
   if (s.rebuilt)
-    std::cout << "[build] built -> " + cfg.exe_path.string() + '\n';
+    std::cout << "[build] built -> " << cfg.exe_path.string() << '\n';
   else
-    std::cout << "[build] up-to-date (" + cfg.exe_path.filename().string() +
-                     ")\n";
+    std::cout << "[build] up-to-date ("
+              << cfg.exe_path.filename().string() + ")\n";
 }
 
 std::string trim_lower(std::string s) {
@@ -96,6 +96,10 @@ bool ask_save(const fs::path &target) {
   return true;
 }
 
+inline std::string bg(std::string_view s) {
+  return color::paint(s, {color::Code::BgWhite, color::Code::Black});
+}
+
 int finish_single(const AppConfig &cfg, const SingleRunResult &run) {
   auto status = [&]() -> std::string {
     switch (run.result.status) {
@@ -114,23 +118,14 @@ int finish_single(const AppConfig &cfg, const SingleRunResult &run) {
 
   std::ostringstream oss;
 
-#define bg(s) color::paint(s, {color::Code::BgWhite, color::Code::Black})
-
-  oss << "\n[result] cpu " +
-             bg(std::to_string(run.result.cpu_time.count()) + " ms") +
-             " wall " +
-             bg(std::to_string(run.result.wall_time.count()) + " ms") +
-             " mem " + bg(format_memory(run.result.memory_bytes)) + "  " +
-             status()
-      << '\n';
-
-#undef bg
-
-  std::cout << '\n';
+  oss << "[result] cpu "
+      << bg(std::to_string(run.result.cpu_time.count()) + " ms") << " wall "
+      << bg(std::to_string(run.result.wall_time.count()) + " ms") << " mem "
+      << bg(format_memory(run.result.memory_bytes)) << "  " << status();
 
   std::string out = oss.str();
-  std::cout << std::string(out.size(), '-');
-  std::cout << out;
+  const std::size_t w = color::visible_width(out);
+  std::cout << '\n' << std::string(w, '-') << '\n' << out << '\n';
 
   if (cfg.single_output.empty()) {
     std::cout << "[save] [io].single_output is not configured, nothing saved\n";
@@ -269,7 +264,7 @@ int run_batch(const AppConfig &cfg) {
   }
 
   std::cout << "\n";
-  for (const auto &line : format_results(results, true, true)) {
+  for (const auto &line : format_results(results, true, true, std::cout)) {
     std::cout << line << "\n";
   }
   std::cout << "\n" << passed << " / " << results.size() << " passed\n";
