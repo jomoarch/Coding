@@ -36,20 +36,14 @@ else()
   target_compile_options(coding_common PRIVATE -Wall -Wextra)
 endif()
 
-set(APP_VARIANTS
-  "cg_b;src/main_batch.cpp"
-  "cg_s;src/main_single.cpp"
-  "cg_i;src/main_interactive.cpp"
-)
-
-foreach(variant IN LISTS APP_VARIANTS)
-  list(GET variant 0 exe_name)
-  list(GET variant 1 main_src)
-
+function(add_coding_app exe_name main_src)
   add_executable(${exe_name} ${main_src})
   target_link_libraries(${exe_name} PRIVATE coding_common)
-
   set_target_properties(${exe_name} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   )
-endforeach()
+endfunction()
+
+add_coding_app(cg_b src/main_batch.cpp)
+add_coding_app(cg_s src/main_single.cpp)
+add_coding_app(cg_i src/main_interactive.cpp)

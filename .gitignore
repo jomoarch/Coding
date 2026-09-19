@@ -1,5 +1,4 @@
 .vscode/
 build/
-*.toml
-!config.example.toml
 *.exe
+test/out/

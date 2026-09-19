@@ -94,6 +94,8 @@ bool should_pause(const CliOptions &cli) {
   return count <= 1;
 }
 
+void use_utf8_console() noexcept { SetConsoleOutputCP(CP_UTF8); }
+
 int dispatch(Mode mode, const AppConfig &cfg) {
   switch (mode) {
   case Mode::Batch:
@@ -134,6 +136,7 @@ const char *description(Mode mode) noexcept {
 }
 
 int run(Mode mode, int argc, char **argv) {
+  use_utf8_console();
   color::install();
 
   CliOptions cli;

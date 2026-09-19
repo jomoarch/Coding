@@ -1,4 +1,5 @@
 #include "text.hpp"
+#include "text_width_table.hpp"
 
 #include <cctype>
 
@@ -43,35 +44,26 @@ Codepoint decode_utf8(std::string_view s, std::size_t i) noexcept {
   return {value, length};
 }
 
-bool is_wide(char32_t cp) noexcept {
-  return (cp >= 0x1100 && cp <= 0x115F) ||   // Hangul Jamo
-         (cp >= 0x2E80 && cp <= 0x303E) ||   // CJK radicals, Kangxi, symbols
-         (cp >= 0x3041 && cp <= 0x33FF) ||   // kana, Bopomofo, compat Jamo
-         (cp >= 0x3400 && cp <= 0x4DBF) ||   // CJK extension A
-         (cp >= 0x4E00 && cp <= 0x9FFF) ||   // CJK unified ideographs
-         (cp >= 0xA000 && cp <= 0xA4CF) ||   // Yi
-         (cp >= 0xAC00 && cp <= 0xD7A3) ||   // Hangul syllables
-         (cp >= 0xF900 && cp <= 0xFAFF) ||   // CJK compatibility ideographs
-         (cp >= 0xFE10 && cp <= 0xFE19) ||   // vertical forms
-         (cp >= 0xFE30 && cp <= 0xFE6F) ||   // CJK compatibility forms
-         (cp >= 0xFF00 && cp <= 0xFF60) ||   // fullwidth forms
-         (cp >= 0xFFE0 && cp <= 0xFFE6) ||   //
-         (cp >= 0x1F300 && cp <= 0x1F64F) || // emoji
-         (cp >= 0x1F900 && cp <= 0x1F9FF) || //
-         (cp >= 0x20000 && cp <= 0x3FFFD);   // CJK extension B and beyond
+template <std::size_t N>
+bool in_ranges(const width_table::Range (&table)[N], char32_t cp) noexcept {
+  std::size_t lo = 0;
+  std::size_t hi = N;
+  while (lo < hi) {
+    const std::size_t mid = lo + (hi - lo) / 2;
+    if (cp < table[mid].lo)
+      hi = mid;
+    else if (cp > table[mid].hi)
+      lo = mid + 1;
+    else
+      return true;
+  }
+  return false;
 }
 
+bool is_wide(char32_t cp) noexcept { return in_ranges(width_table::kWide, cp); }
+
 bool is_zero_width(char32_t cp) noexcept {
-  return cp < 0x20 || cp == 0x7F ||
-         (cp >= 0x0300 && cp <= 0x036F) || // combining diacritical marks
-         (cp >= 0x0483 && cp <= 0x0489) || //
-         (cp >= 0x1AB0 && cp <= 0x1AFF) || // combining marks extended
-         (cp >= 0x1DC0 && cp <= 0x1DFF) || // combining marks supplement
-         (cp >= 0x200B && cp <= 0x200F) || // zero width space, bidi marks
-         (cp >= 0x20D0 && cp <= 0x20FF) || // combining marks for symbols
-         (cp >= 0xFE00 && cp <= 0xFE0F) || // variation selectors
-         (cp >= 0xFE20 && cp <= 0xFE2F) || // combining half marks
-         cp == 0xFEFF;                     // BOM / zero width no-break space
+  return in_ranges(width_table::kZero, cp);
 }
 
 } // namespace
