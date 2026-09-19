@@ -74,6 +74,8 @@ ConfigResult load_config(const std::filesystem::path &path) {
       c.single_input = *v;
     if (auto v = (*t)["single_output"].value<std::string>())
       c.single_output = *v;
+    if (auto v = (*t)["colorize_output"].value<bool>())
+      c.colorize_output = *v;
   }
 
   // [thread]

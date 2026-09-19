@@ -25,6 +25,7 @@ struct AppConfig {
   std::filesystem::path output_dir;
   std::filesystem::path single_input;
   std::filesystem::path single_output;
+  bool colorize_output{true};
 
   // thread
   std::size_t thread_max{1};

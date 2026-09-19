@@ -63,4 +63,5 @@ cg_b --help
 | `[io].output_dir` | ✔ | 存放 `*.out` 的目录 |
 | `[io].single_input` | | `cg_s` 的输入文件 |
 | `[io].single_output` | | `cg_s` / `cg_i` 询问保存时的目标文件 |
+| `[io].colorize_output` | | `cg_s` / `cg_i` 是否给程序自身输出染色（默认 `true`）|
 | `[thread].thread_max` | | 并发测试点数，同时受 CPU 核心数限制 |

@@ -154,7 +154,7 @@ int run_interactive(const AppConfig &cfg) {
   opt.work_dir = cfg.work_dir;
   opt.stdin_from_console = true;
   opt.echo = true;
-  opt.colorize_output = true;
+  opt.colorize_output = cfg.colorize_output;
 
   return finish_single(cfg, run_single(opt));
 }
@@ -192,6 +192,7 @@ int run_single_file(const AppConfig &cfg) {
   opt.stdin_from_console = false;
   opt.input_text = input;
   opt.echo = true;
+  opt.colorize_output = cfg.colorize_output;
 
   return finish_single(cfg, run_single(opt));
 }

@@ -8,32 +8,34 @@
 #include <chrono>
 #include <functional>
 #include <iostream>
+#include <mutex>
+#include <string_view>
 #include <thread>
 #include <vector>
 
 namespace {
 
-void pump_to_terminal(HANDLE hRead, bool echo, std::string &sink,
-                      bool colorize) {
-  const bool use_color = colorize && color::enabled();
-  const char *kOn = use_color ? "\033[36m" : "";
-  const char *kOff = use_color ? "\033[0m" : "";
-  const bool has_on = (kOn[0] != '\0');
-
+void pump_to_terminal(HANDLE hRead, bool echo, bool colorize,
+                      const color::Style *style, std::string *sink,
+                      std::mutex &echo_mutex) {
   std::vector<char> buf(4096);
   DWORD n = 0;
   while (ReadFile(hRead, buf.data(), static_cast<DWORD>(buf.size()), &n,
                   nullptr) &&
          n > 0) {
-    sink.append(buf.data(), n);
-    if (echo) {
-      if (has_on)
-        std::cout << kOn;
-      std::cout.write(buf.data(), static_cast<std::streamsize>(n));
-      if (has_on)
-        std::cout << kOff;
-      std::cout.flush();
-    }
+    if (sink != nullptr)
+      sink->append(buf.data(), n);
+
+    if (!echo)
+      continue;
+
+    const std::string_view chunk(buf.data(), n);
+    const std::lock_guard<std::mutex> lock(echo_mutex);
+    if (colorize)
+      style->write(std::cout, chunk);
+    else
+      std::cout.write(chunk.data(), static_cast<std::streamsize>(chunk.size()));
+    std::cout.flush();
   }
 }
 
@@ -76,15 +78,29 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   sa.nLength = sizeof(sa);
   sa.bInheritHandle = TRUE;
 
-  HANDLE hOutReadRaw = INVALID_HANDLE_VALUE;
-  HANDLE hOutWriteRaw = INVALID_HANDLE_VALUE;
-  if (!CreatePipe(&hOutReadRaw, &hOutWriteRaw, &sa, 0)) {
-    out.result.message = "CreatePipe failed: " + win::last_error_string();
+  auto make_pipe = [&](HandleGuard &read_end, HandleGuard &write_end,
+                       const char *what) {
+    HANDLE r = INVALID_HANDLE_VALUE;
+    HANDLE w = INVALID_HANDLE_VALUE;
+    if (!CreatePipe(&r, &w, &sa, 0)) {
+      out.result.message = std::string("CreatePipe(") + what +
+                           ") failed: " + win::last_error_string();
+      return false;
+    }
+    read_end.reset(r);
+    write_end.reset(w);
+    SetHandleInformation(read_end.get(), HANDLE_FLAG_INHERIT, 0);
+    return true;
+  };
+
+  HandleGuard hOutRead;
+  HandleGuard hOutWrite;
+  HandleGuard hErrRead;
+  HandleGuard hErrWrite;
+  if (!make_pipe(hOutRead, hOutWrite, "stdout"))
     return out;
-  }
-  HandleGuard hOutRead(hOutReadRaw);
-  HandleGuard hOutWrite(hOutWriteRaw);
-  SetHandleInformation(hOutRead.get(), HANDLE_FLAG_INHERIT, 0);
+  if (!make_pipe(hErrRead, hErrWrite, "stderr"))
+    return out;
 
   HandleGuard hStdinRead;
   HandleGuard hStdinWrite;
@@ -130,7 +146,7 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   si.dwFlags = STARTF_USESTDHANDLES;
   si.hStdInput = hChildStdin;
   si.hStdOutput = hOutWrite.get();
-  si.hStdError = hOutWrite.get();
+  si.hStdError = hErrWrite.get();
 
   PROCESS_INFORMATION pi{};
   DWORD create_flags = CREATE_SUSPENDED;
@@ -154,14 +170,23 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   }
 
   hOutWrite.reset();
+  hErrWrite.reset();
   hStdinRead.reset();
 
   const auto t0 = std::chrono::steady_clock::now();
   ResumeThread(pi.hThread);
 
+  const color::Style stdout_style({color::Code::Green});
+  const color::Style stderr_style({color::Code::Red});
+
   std::string captured;
-  std::thread pump(pump_to_terminal, hOutRead.get(), opts.echo,
-                   std::ref(captured), opts.colorize_output);
+  std::mutex echo_mutex;
+  std::thread out_pump(pump_to_terminal, hOutRead.get(), opts.echo,
+                       opts.colorize_output, &stdout_style, &captured,
+                       std::ref(echo_mutex));
+  std::thread err_pump(pump_to_terminal, hErrRead.get(), opts.echo,
+                       opts.colorize_output, &stderr_style, nullptr,
+                       std::ref(echo_mutex));
 
   if (hStdinWrite.valid()) {
     std::size_t left = opts.input_text.size();
@@ -180,8 +205,10 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   }
 
   WaitForSingleObject(pi.hProcess, INFINITE);
-  pump.join();
+  out_pump.join();
+  err_pump.join();
   hOutRead.reset();
+  hErrRead.reset();
 
   const auto t1 = std::chrono::steady_clock::now();
   out.result.wall_time =

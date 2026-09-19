@@ -28,6 +28,9 @@ output_dir = "test/out"
 single_input = "test/input"
 # Used by cg_s / cg_i to offer saving the captured output.
 single_output = "test/output"
+# Render the program's own output in cg_s / cg_i: stdout green, stderr red.
+# Ignored when the terminal cannot do colour (redirected output, NO_COLOR).
+colorize_output = true
 
 [thread]
 # Optional. Maximum concurrent test cases; also capped by the CPU count.
