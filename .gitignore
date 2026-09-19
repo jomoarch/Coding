@@ -1,4 +1,5 @@
 .vscode/
 build/
 *.toml
+!config.example.toml
 *.exe

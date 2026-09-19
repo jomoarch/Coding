@@ -10,6 +10,8 @@ if(NOT WIN32)
 endif()
 
 set(COMMON_SOURCES
+  src/text.cpp
+  src/app.cpp
   src/modes.cpp
   src/runner.cpp
   src/runner_single.cpp
@@ -23,25 +25,29 @@ set(COMMON_SOURCES
   src/color.cpp
 )
 
-set(APP_VARIANTS
-  "main_batch.cpp|cg_b"
-  "main_single.cpp|cg_s"
-  "main_interactive.cpp|cg_i"
+add_library(coding_common STATIC ${COMMON_SOURCES})
+target_include_directories(coding_common PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-foreach(variant ${APP_VARIANTS})
-  string(REPLACE "|" ";" parts "${variant}")
-  list(GET parts 0 main_src)
-  list(GET parts 1 exe_name)
+if(MSVC)
+  target_compile_options(coding_common PRIVATE /W4 /permissive-)
+else()
+  target_compile_options(coding_common PRIVATE -Wall -Wextra)
+endif()
 
-  add_executable(${exe_name}
-    src/${main_src}
-    ${COMMON_SOURCES}
-  )
+set(APP_VARIANTS
+  "cg_b;src/main_batch.cpp"
+  "cg_s;src/main_single.cpp"
+  "cg_i;src/main_interactive.cpp"
+)
 
-  target_include_directories(${exe_name} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-  )
+foreach(variant IN LISTS APP_VARIANTS)
+  list(GET variant 0 exe_name)
+  list(GET variant 1 main_src)
+
+  add_executable(${exe_name} ${main_src})
+  target_link_libraries(${exe_name} PRIVATE coding_common)
 
   set_target_properties(${exe_name} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"

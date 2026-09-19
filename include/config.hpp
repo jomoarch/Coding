@@ -28,6 +28,9 @@ struct AppConfig {
 
   // thread
   std::size_t thread_max{1};
+
+  // build
+  bool force_rebuild{false};
 };
 
 struct ConfigResult {

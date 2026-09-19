@@ -6,15 +6,15 @@
 #include "runner_batch.hpp"
 #include "runner_single.hpp"
 #include "color.hpp"
+#include "text.hpp"
 
 #include <windows.h>
 
-#include <algorithm>
-#include <cctype>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <utility>
 
 namespace fs = std::filesystem;
 
@@ -31,6 +31,7 @@ BuildStep build_step(const AppConfig &cfg) {
   opt.output_path = cfg.exe_path;
   opt.args = cfg.args;
   opt.extra_deps.push_back(cfg.config_path);
+  opt.force_rebuild = cfg.force_rebuild;
 
   const BuildResult br = ensure_built(opt);
 
@@ -38,7 +39,7 @@ BuildStep build_step(const AppConfig &cfg) {
   s.ok = br.success;
   s.rebuilt = br.rebuilt;
   if (!s.ok)
-    std::cerr << color::err("[compile] Failed:\n" + br.message) << "\n";
+    std::cerr << color::err("[compile] Failed:\n", br.message) << "\n";
   return s;
 }
 
@@ -50,14 +51,8 @@ void print_build_line(const AppConfig &cfg, const BuildStep &s) {
               << cfg.exe_path.filename().string() + ")\n";
 }
 
-std::string trim_lower(std::string s) {
-  auto not_space = [](unsigned char c) { return !std::isspace(c); };
-  s.erase(s.begin(), std::find_if(s.begin(), s.end(), not_space));
-  s.erase(std::find_if(s.rbegin(), s.rend(), not_space).base(), s.end());
-  std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
-    return static_cast<char>(std::tolower(c));
-  });
-  return s;
+std::string trim_lower(std::string_view s) {
+  return text::to_lower(text::trim(s));
 }
 
 bool write_text(const fs::path &path, const std::string &text) {
@@ -131,13 +126,11 @@ int finish_single(const AppConfig &cfg, const SingleRunResult &run) {
     std::cout << "[save] [io].single_output is not configured, nothing saved\n";
   } else if (ask_save(cfg.single_output)) {
     if (write_text(cfg.single_output, run.captured)) {
-      std::cout << color::ok(
-                       "[save] saved " + std::to_string(run.captured.size()) +
-                       std::string(" byte(s) -> ") + cfg.single_output.string())
+      std::cout << color::ok("[save] saved ", run.captured.size(),
+                             " byte(s) -> ", cfg.single_output)
                 << "\n";
     } else {
-      std::cerr << color::err("[save] Failed to write " +
-                              cfg.single_output.string())
+      std::cerr << color::err("[save] Failed to write ", cfg.single_output)
                 << "\n";
       return 2;
     }
@@ -175,8 +168,7 @@ int run_single_file(const AppConfig &cfg) {
 
   std::ifstream in(cfg.single_input, std::ios::binary);
   if (!in) {
-    std::cerr << color::err("[io] Cannot open single_input: " +
-                            cfg.single_input.string())
+    std::cerr << color::err("[io] Cannot open single_input: ", cfg.single_input)
               << "\n";
     return 2;
   }
@@ -220,7 +212,7 @@ int run_batch(const AppConfig &cfg) {
     return 2;
   if (built.rebuilt)
     std::cout << "      rebuild: source/config newer than output\n"
-              << color::ok("      OK -> " + cfg.exe_path.string()) << "\n";
+              << color::ok("      OK -> ", cfg.exe_path) << "\n";
   else
     std::cout << "      skipped: up-to-date ("
               << cfg.exe_path.filename().string() << ")\n";
@@ -232,18 +224,15 @@ int run_batch(const AppConfig &cfg) {
 
   auto io_res = gen_filepair(io_opts);
   if (!io_res.success) {
-    std::cerr << color::err("[io] " + io_res.message) << "\n";
+    std::cerr << color::err("[io] ", io_res.message) << "\n";
     return 2;
   }
   if (io_res.pairs.empty()) {
-    std::cerr << color::err("[io] No .in files found in " +
-                            cfg.input_dir.string())
+    std::cerr << color::err("[io] No .in files found in ", cfg.input_dir)
               << "\n";
     return 2;
   }
-  std::cout << color::info("      Found " +
-                           std::to_string(io_res.pairs.size()) +
-                           std::string(" test case(s)"))
+  std::cout << color::info("      Found ", io_res.pairs.size(), " test case(s)")
             << "\n";
 
   std::cout << "\n[3/3] Running...\n";
@@ -257,17 +246,18 @@ int run_batch(const AppConfig &cfg) {
 
   auto results = run_all(batch);
 
-  std::size_t passed = 0;
+  std::size_t clean = 0;
   for (const auto &u : results) {
     if (u.result.status == RunnerStatus::Success)
-      ++passed;
+      ++clean;
   }
 
   std::cout << "\n";
   for (const auto &line : format_results(results, true, true, std::cout)) {
     std::cout << line << "\n";
   }
-  std::cout << "\n" << passed << " / " << results.size() << " passed\n";
+  std::cout << "\n"
+            << clean << " / " << results.size() << " finished without error\n";
 
-  return passed == results.size() ? 0 : 1;
+  return clean == results.size() ? 0 : 1;
 }

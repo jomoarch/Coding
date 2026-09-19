@@ -1,0 +1,34 @@
+[compiler]
+# Required. The solution to compile.
+source = "test/src/solution.cpp"
+# Required. Where the executable is written.
+output = "test/bin/solution.exe"
+# Optional. Full compiler command line; the source and "-o <output>" are
+# appended automatically. Defaults to "g++ -std=c++17".
+args = ["g++", "-std=c++17", "-O2", "-Wall", "-Wextra"]
+
+[runner]
+# Required. Working directory for every run; each test case also gets its own
+# subdirectory (t0, t1, ...) underneath it.
+work_dir = "test/work"
+# Strongly recommended. Without it a runaway program is never killed.
+time_limit_ms = 1000
+# Optional. 0 disables the memory limit.
+memory_limit_mb = 256
+
+[io]
+# Required, even in -s / -i mode. Directory holding the *.in test cases.
+input_dir = "test/in"
+# Required. Directory receiving the produced *.out files.
+#
+# NOTE: every existing entry in this directory is deleted recursively before a
+# batch run, so never point this at a directory holding expected answers.
+output_dir = "test/out"
+# Used by cg_s only.
+single_input = "test/input"
+# Used by cg_s / cg_i to offer saving the captured output.
+single_output = "test/output"
+
+[thread]
+# Optional. Maximum concurrent test cases; also capped by the CPU count.
+thread_max = 4

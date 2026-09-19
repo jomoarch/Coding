@@ -1,9 +1,11 @@
 #include "formatter.hpp"
 #include "color.hpp"
+#include "text.hpp"
 
 #include <iomanip>
 #include <sstream>
 #include <algorithm>
+#include <utility>
 
 std::string format_memory(std::size_t bytes) {
   if (bytes == 0)
@@ -14,7 +16,7 @@ std::string format_memory(std::size_t bytes) {
 
   double v = static_cast<double>(bytes);
   int i = 0;
-  while (v >= 1023.955 && i < last_unit) {
+  while (v >= 1023.995 && i < last_unit) {
     v /= 1024.0;
     ++i;
   }
@@ -59,31 +61,29 @@ std::vector<std::string> format_results(const std::vector<ResultUnit> &results,
 
     row.status = u.result.status;
 
-    w_name = std::max(w_name, row.name.size());
-    w_wall = std::max(w_wall, row.wall.size());
-    w_cpu = std::max(w_cpu, row.cpu.size());
-    w_mem = std::max(w_mem, row.mem.size());
+    w_name = std::max(w_name, text::display_width(row.name));
+    w_wall = std::max(w_wall, text::display_width(row.wall));
+    w_cpu = std::max(w_cpu, text::display_width(row.cpu));
+    w_mem = std::max(w_mem, text::display_width(row.mem));
 
     rows.push_back(std::move(row));
   }
 
   for (const auto &row : rows) {
-    std::ostringstream line;
-
-    line << std::left << std::setw(static_cast<int>(w_name)) << row.name
-         << "  ";
+    std::string o = text::pad_right(row.name, w_name);
+    o += "  ";
 
     if (show_wall_time) {
-      line << std::setw(static_cast<int>(w_wall)) << std::right << row.wall
-           << "  ";
+      o += text::pad_left(row.wall, w_wall);
+      o += "  ";
     }
-    line << std::setw(static_cast<int>(w_cpu)) << std::right << row.cpu << "  ";
-    line << std::setw(static_cast<int>(w_mem)) << std::right << row.mem << "  ";
-    if (show_message) {
-      line << row.msg;
-    }
+    o += text::pad_left(row.cpu, w_cpu);
+    o += "  ";
+    o += text::pad_left(row.mem, w_mem);
+    o += "  ";
+    if (show_message)
+      o += row.msg;
 
-    std::string o = line.str();
     switch (row.status) {
     case RunnerStatus::Success: {
       o = color::paint(os, o, {color::Code::Bold, color::Code::Green});

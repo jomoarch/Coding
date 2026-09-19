@@ -1,15 +1,17 @@
 #ifndef HEADER_HPP
 #define HEADER_HPP
 
+#include "app.hpp"
+#include "color.hpp"
 #include "config.hpp"
 #include "modes.hpp"
-#include "color.hpp"
+#include "text.hpp"
 
 #include <windows.h>
 
+#include <conio.h>
 #include <filesystem>
 #include <iostream>
 #include <string>
-#include <conio.h>
 
 #endif // HEADER_HPP

@@ -1,11 +1,11 @@
 #include "color.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <map>
-#include <ostream>
 #include <string>
 #include <vector>
 
@@ -47,7 +47,7 @@ bool is_tty(int fd) { return ::isatty(fd) != 0; }
 #endif
 
 int sgr_group(Code c) noexcept {
-  int v = static_cast<int>(c);
+  const int v = static_cast<int>(c);
   if (v == 1 || v == 2)
     return 1;
   if (v == 3 || v == 4 || v == 5 || v == 7 || v == 8)
@@ -82,139 +82,172 @@ int group_reset(int g) noexcept {
   }
 }
 
-std::string sgr_set(const Code *codes, std::size_t n) {
-  std::string out = "\033[";
-  for (std::size_t i = 0; i < n; ++i) {
-    if (i)
+std::string sgr_params(const Attr *attrs, std::size_t count) {
+  std::string out;
+  out.reserve(count * 6);
+  for (std::size_t i = 0; i < count; ++i) {
+    if (i != 0)
       out += ';';
-    out += std::to_string(static_cast<int>(codes[i]));
+    out += attrs[i].sgr();
   }
-  out += 'm';
   return out;
 }
 
-std::string reset_seq(const Code *codes, std::size_t n) {
-  bool bold_dim = false, italic = false, underline = false, blink = false;
-  bool reverse = false, hidden = false, fg = false, bg = false, any = false;
+std::string sgr_set(const Attr *attrs, std::size_t count) {
+  if (count == 0)
+    return {};
+  return "\033[" + sgr_params(attrs, count) + "m";
+}
 
-  for (std::size_t i = 0; i < n; ++i) {
-    switch (static_cast<int>(codes[i])) {
-    case 0:
-      return "\033[0m";
-    case 1:
-    case 2:
-      bold_dim = true;
-      any = true;
-      break;
-    case 3:
-      italic = true;
-      any = true;
-      break;
-    case 4:
-      underline = true;
-      any = true;
-      break;
-    case 5:
-      blink = true;
-      any = true;
-      break;
-    case 7:
-      reverse = true;
-      any = true;
-      break;
-    case 8:
-      hidden = true;
-      any = true;
-      break;
-    default: {
-      int v = static_cast<int>(codes[i]);
-      if ((v >= 30 && v <= 37) || (v >= 90 && v <= 97)) {
-        fg = true;
-        any = true;
-      } else if ((v >= 40 && v <= 47) || (v >= 100 && v <= 107)) {
-        bg = true;
-        any = true;
-      }
-    }
-    }
-  }
-  if (!any)
+std::string reset_seq(const Attr *attrs, std::size_t count) {
+  if (count == 0)
     return {};
 
+  std::vector<int> resets;
+  resets.reserve(count);
+
+  for (std::size_t i = 0; i < count; ++i) {
+    if (attrs[i].is_basic() && attrs[i].code() == Code::Reset)
+      return "\033[0m";
+
+    const int r = attrs[i].reset_group();
+    if (r == 0)
+      continue;
+    if (std::find(resets.begin(), resets.end(), r) == resets.end())
+      resets.push_back(r);
+  }
+
+  if (resets.empty())
+    return {};
+
+  std::sort(resets.begin(), resets.end());
+
   std::string out = "\033[";
-  bool first = true;
-  auto add = [&](int v) {
-    if (!first)
+  for (std::size_t i = 0; i < resets.size(); ++i) {
+    if (i != 0)
       out += ';';
-    first = false;
-    out += std::to_string(v);
-  };
-  if (bold_dim)
-    add(22);
-  if (italic)
-    add(23);
-  if (underline)
-    add(24);
-  if (blink)
-    add(25);
-  if (reverse)
-    add(27);
-  if (hidden)
-    add(28);
-  if (fg)
-    add(39);
-  if (bg)
-    add(49);
+    out += std::to_string(resets[i]);
+  }
   out += 'm';
   return out;
 }
 
-std::string transition_seq(const std::vector<Code> &from,
-                           const std::vector<Code> &to) {
-  std::map<int, Code> fm, tm;
-  for (Code c : from) {
-    int g = sgr_group(c);
-    if (g)
-      fm[g] = c;
+std::string transition_seq(const std::vector<Attr> &from,
+                           const std::vector<Attr> &to) {
+  std::map<int, Attr> from_slots;
+  std::map<int, Attr> to_slots;
+  for (const Attr &a : from) {
+    const int g = a.group();
+    if (g != 0)
+      from_slots[g] = a;
   }
-  for (Code c : to) {
-    int g = sgr_group(c);
-    if (g)
-      tm[g] = c;
+  for (const Attr &a : to) {
+    const int g = a.group();
+    if (g != 0)
+      to_slots[g] = a;
   }
 
-  std::string rst, set;
-  for (auto &[g, c] : fm) {
-    auto it = tm.find(g);
-    if (it == tm.end() || it->second != c) {
-      int r = group_reset(g);
-      if (r) {
-        if (!rst.empty())
-          rst += ';';
-        rst += std::to_string(r);
-      }
+  std::vector<int> resets;
+  for (const auto &entry : from_slots) {
+    const auto it = to_slots.find(entry.first);
+    if (it == to_slots.end() || it->second != entry.second) {
+      const int r = entry.second.reset_group();
+      if (r != 0)
+        resets.push_back(r);
     }
   }
-  for (auto &[g, c] : tm) {
-    auto it = fm.find(g);
-    if (it == fm.end() || it->second != c) {
-      if (!set.empty())
-        set += ';';
-      set += std::to_string(static_cast<int>(c));
-    }
+
+  std::vector<Attr> sets;
+  for (const auto &entry : to_slots) {
+    const auto it = from_slots.find(entry.first);
+    if (it == from_slots.end() || !(it->second == entry.second))
+      sets.push_back(entry.second);
   }
+
+  std::sort(resets.begin(), resets.end());
 
   std::string out;
-  if (!rst.empty())
-    out += "\033[" + rst + "m";
-  if (!set.empty())
-    out += "\033[" + set + "m";
+  if (!resets.empty()) {
+    out += "\033[";
+    for (std::size_t i = 0; i < resets.size(); ++i) {
+      if (i != 0)
+        out += ';';
+      out += std::to_string(resets[i]);
+    }
+    out += 'm';
+  }
+  if (!sets.empty())
+    out += sgr_set(sets.data(), sets.size());
   return out;
 }
 
-thread_local std::map<std::ostream *, std::vector<Code>> t_state;
+std::string paint_impl(std::ostream &os, std::string_view body,
+                       const Attr *attrs, std::size_t count) {
+  if (count == 0 || body.empty() || !enabled(os))
+    return std::string(body);
+
+  const std::string params = sgr_params(attrs, count);
+  const std::string reset = reset_seq(attrs, count);
+
+  std::string out;
+  out.reserve(3 + params.size() + body.size() + reset.size());
+  out += "\033[";
+  out += params;
+  out += 'm';
+  out.append(body.data(), body.size());
+  out += reset;
+  return out;
+}
+
+thread_local std::map<std::ostream *, std::vector<Attr>> t_state;
 
 } // namespace
+
+std::string Attr::sgr() const {
+  switch (kind_) {
+  case Kind::Basic:
+    return std::to_string(static_cast<int>(code_));
+  case Kind::IndexedFg:
+    return "38;5;" + std::to_string(index_);
+  case Kind::IndexedBg:
+    return "48;5;" + std::to_string(index_);
+  case Kind::RgbFg:
+    return "38;2;" + std::to_string(r_) + ";" + std::to_string(g_) + ";" +
+           std::to_string(b_);
+  case Kind::RgbBg:
+    return "48;2;" + std::to_string(r_) + ";" + std::to_string(g_) + ";" +
+           std::to_string(b_);
+  }
+  return {};
+}
+
+int Attr::group() const noexcept {
+  switch (kind_) {
+  case Kind::Basic:
+    return sgr_group(code_);
+  case Kind::IndexedFg:
+  case Kind::RgbFg:
+    return 30;
+  case Kind::IndexedBg:
+  case Kind::RgbBg:
+    return 40;
+  }
+  return 0;
+}
+
+int Attr::reset_group() const noexcept {
+  switch (kind_) {
+  case Kind::Basic:
+    return group_reset(sgr_group(code_));
+  case Kind::IndexedFg:
+  case Kind::RgbFg:
+    return 39;
+  case Kind::IndexedBg:
+  case Kind::RgbBg:
+    return 49;
+  }
+  return 0;
+}
 
 bool enabled() noexcept { return enabled(std::cout); }
 
@@ -241,6 +274,7 @@ bool install() noexcept {
     set_enabled(false);
     return false;
   }
+
   bool force = false;
   if (const char *fc = std::getenv("FORCE_COLOR");
       fc && *fc && std::strcmp(fc, "0") != 0)
@@ -266,70 +300,77 @@ bool install() noexcept {
   return ok_out || ok_err;
 }
 
-std::string paint(std::string_view text, const Code *codes, std::size_t count) {
-  return paint(std::cout, text, codes, count);
-}
-
-std::string paint(std::ostream &os, std::string_view text, const Code *codes,
-                  std::size_t count) {
-  if (count == 0 || text.empty() || !enabled(os))
-    return std::string(text);
-
-  std::string out;
-  out.reserve(text.size() + count * 4 + 16);
-  out += sgr_set(codes, count);
-  out.append(text.data(), text.size());
-  out += reset_seq(codes, count);
-  return out;
-}
-
-std::string paint(std::string_view text, std::initializer_list<Code> codes) {
-  return paint(std::cout, text, codes.begin(), codes.size());
+std::string paint(std::string_view text, std::initializer_list<Attr> attrs) {
+  return paint_impl(std::cout, text, attrs.begin(), attrs.size());
 }
 
 std::string paint(std::ostream &os, std::string_view text,
-                  std::initializer_list<Code> codes) {
-  return paint(os, text, codes.begin(), codes.size());
+                  std::initializer_list<Attr> attrs) {
+  return paint_impl(os, text, attrs.begin(), attrs.size());
 }
 
-std::ostream &operator<<(std::ostream &os, const Painted &p) {
-  const auto sz = static_cast<std::streamsize>(p.text_.size());
-  if (p.count_ == 0 || p.text_.empty() || !enabled(os)) {
-    os.write(p.text_.data(), sz);
-    return os;
+std::string strip(std::string_view text) {
+  std::string out;
+  out.reserve(text.size());
+
+  std::size_t i = 0;
+  const std::size_t n = text.size();
+  while (i < n) {
+    if (static_cast<unsigned char>(text[i]) == 0x1B && i + 1 < n &&
+        text[i + 1] == '[') {
+      i += 2;
+      while (i < n && text[i] != 'm')
+        ++i;
+      if (i < n)
+        ++i;
+      continue;
+    }
+    out.push_back(text[i]);
+    ++i;
   }
-  const std::string set = sgr_set(p.codes_, p.count_);
-  const std::string rst = reset_seq(p.codes_, p.count_);
-  os.write(set.data(), static_cast<std::streamsize>(set.size()));
-  os.write(p.text_.data(), sz);
-  os.write(rst.data(), static_cast<std::streamsize>(rst.size()));
-  return os;
+  return out;
 }
 
-Scope::Scope(std::ostream &os, std::initializer_list<Code> codes) {
-  if (codes.size() == 0 || !enabled(os))
+std::string Style::render(std::string_view text_body) const {
+  return paint_impl(std::cout, text_body, attrs_.data(), attrs_.size());
+}
+
+std::string Style::set_sequence(std::ostream &os) const {
+  if (attrs_.empty() || !enabled(os))
+    return {};
+  return sgr_set(attrs_.data(), attrs_.size());
+}
+
+std::string Style::reset_sequence(std::ostream &os) const {
+  if (attrs_.empty() || !enabled(os))
+    return {};
+  return reset_seq(attrs_.data(), attrs_.size());
+}
+
+Scope::Scope(std::ostream &os, std::initializer_list<Attr> attrs) {
+  if (attrs.size() == 0 || !enabled(os))
     return;
   os_ = &os;
 
   auto &state = t_state[&os];
   prev_ = state;
 
-  std::map<int, Code> m;
-  for (Code c : state) {
-    int g = sgr_group(c);
-    if (g)
-      m[g] = c;
+  std::map<int, Attr> merged;
+  for (const Attr &a : state) {
+    const int g = a.group();
+    if (g != 0)
+      merged[g] = a;
   }
-  for (Code c : codes) {
-    int g = sgr_group(c);
-    if (g)
-      m[g] = c;
+  for (const Attr &a : attrs) {
+    const int g = a.group();
+    if (g != 0)
+      merged[g] = a;
   }
 
-  std::vector<Code> next;
-  next.reserve(m.size());
-  for (auto &[g, c] : m)
-    next.push_back(c);
+  std::vector<Attr> next;
+  next.reserve(merged.size());
+  for (const auto &entry : merged)
+    next.push_back(entry.second);
 
   const std::string seq = transition_seq(state, next);
   if (!seq.empty())
@@ -351,10 +392,11 @@ void Scope::release() noexcept {
   active_ = false;
   if (!os_)
     return;
+
   std::ostream &os = *os_;
   os_ = nullptr;
 
-  auto it = t_state.find(&os);
+  const auto it = t_state.find(&os);
   if (it == t_state.end())
     return;
   auto &state = it->second;
@@ -371,24 +413,27 @@ void Scope::release() noexcept {
 
 Scope::~Scope() { release(); }
 
-std::size_t visible_width(std::string_view s) noexcept {
-  std::size_t w = 0;
+std::size_t visible_width(std::string_view text) noexcept {
+  std::size_t columns = 0;
   std::size_t i = 0;
-  const std::size_t n = s.size();
+  const std::size_t n = text.size();
+
   while (i < n) {
-    if (static_cast<unsigned char>(s[i]) == 0x1B && i + 1 < n &&
-        s[i + 1] == '[') {
+    if (static_cast<unsigned char>(text[i]) == 0x1B && i + 1 < n &&
+        text[i + 1] == '[') {
       i += 2;
-      while (i < n && s[i] != 'm')
+      while (i < n && text[i] != 'm')
         ++i;
       if (i < n)
         ++i;
       continue;
     }
-    ++w;
-    ++i;
+
+    const text::CharWidth w = text::measure(text, i);
+    columns += w.columns;
+    i += w.bytes;
   }
-  return w;
+  return columns;
 }
 
 } // namespace color
