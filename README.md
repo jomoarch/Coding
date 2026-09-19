@@ -37,7 +37,7 @@ cg_b --help
 
 | 选项 | 说明 |
 | --- | --- |
-| `-c, --config <path>` | 指定配置文件，等价于把路径作为位置参数 |
+| `-c, --config <path>` | 指定配置文件 |
 | `-f, --force` | 即使可执行文件比源码新也重新编译 |
 | `--pause` / `--no-pause` | 强制 / 禁止退出前等待按键 |
 | `-h, --help` | 显示帮助 |
@@ -56,14 +56,11 @@ cg_b --help
 | `[compiler].source` | ✔ | 源文件 |
 | `[compiler].output` | ✔ | 可执行文件输出路径 |
 | `[compiler].args` | | 完整编译命令；源码与 `-o <output>` 会自动追加。默认 `g++ -std=c++17` |
-| `[runner].work_dir` | ✔ | 运行目录；每个测试点还会在其下用 `t0`、`t1`… 隔离 |
-| `[runner].time_limit_ms` | | CPU 时间上限。**强烈建议填**，缺省为 0 时死循环程序不会被终止 |
-| `[runner].memory_limit_mb` | | 内存上限，0 表示不限 |
+| `[runner].work_dir` | ✔ | 运行目录 |
+| `[runner].time_limit_ms` | | CPU 时间上限 |
+| `[runner].memory_limit_mb` | | 内存上限 |
 | `[io].input_dir` | ✔ | 存放 `*.in` 的目录（`-s` / `-i` 模式也要求填写） |
 | `[io].output_dir` | ✔ | 存放 `*.out` 的目录 |
 | `[io].single_input` | | `cg_s` 的输入文件 |
 | `[io].single_output` | | `cg_s` / `cg_i` 询问保存时的目标文件 |
 | `[thread].thread_max` | | 并发测试点数，同时受 CPU 核心数限制 |
-
-> ⚠️ **不要把 `[io].output_dir` 指向存放标准答案的目录。** 批量运行前会递归删除该目录下的
-> 全部内容，防止误删请保持输入与输出目录分离。
