@@ -9,26 +9,42 @@ if(NOT WIN32)
   message(FATAL_ERROR "This project only supports Windows.")
 endif()
 
-set(COMMON_SOURCES
-  src/text.cpp
-  src/app.cpp
-  src/modes.cpp
-  src/runner.cpp
-  src/runner_single.cpp
-  src/runner_batch.cpp
-  src/config.cpp
-  src/compiler.cpp
-  src/formatter.cpp
-  src/win_error.cpp
-  src/iofile.cpp
-  src/builder.cpp
-  src/color.cpp
-  src/cleaner.cpp
+set(BASE_SOURCES
+  src/base/text.cpp
+  src/base/color.cpp
+  src/base/win_error.cpp
+  src/base/cleaner.cpp
 )
 
-add_library(coding_common STATIC ${COMMON_SOURCES})
+set(IO_SOURCES
+  src/io/config.cpp
+  src/io/iofile.cpp
+)
+
+set(PROCESS_SOURCES
+  src/process/compiler.cpp
+  src/process/runner.cpp
+  src/process/runner_single.cpp
+  src/process/runner_batch.cpp
+)
+
+set(APP_SOURCES
+  src/app/app.cpp
+  src/app/builder.cpp
+  src/app/formatter.cpp
+  src/app/modes.cpp
+)
+
+add_library(coding_common STATIC
+  ${BASE_SOURCES}
+  ${IO_SOURCES}
+  ${PROCESS_SOURCES}
+  ${APP_SOURCES}
+)
+
 target_include_directories(coding_common PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/third_party
 )
 
 if(MSVC)
@@ -45,7 +61,7 @@ function(add_coding_app exe_name main_src)
   )
 endfunction()
 
-add_coding_app(cg_b src/main_batch.cpp)
-add_coding_app(cg_s src/main_single.cpp)
-add_coding_app(cg_i src/main_interactive.cpp)
-add_coding_app(clean_dir src/main_clean_dir.cpp)
+add_coding_app(cg_b       src/main/main_batch.cpp)
+add_coding_app(cg_s       src/main/main_single.cpp)
+add_coding_app(cg_i       src/main/main_interactive.cpp)
+add_coding_app(clean_dir  src/main/main_clean_dir.cpp)

@@ -3,7 +3,7 @@
 import unicodedata
 from pathlib import Path
 
-OUT = Path(__file__).resolve().parent.parent / "include" / "text_width_table.hpp"
+OUT = Path(__file__).resolve().parent.parent / "include" / "base" / "text_width_table.hpp"
 PER_LINE = 3
 
 
