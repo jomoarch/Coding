@@ -31,6 +31,11 @@ struct [[nodiscard]] RunnerResult {
   std::chrono::milliseconds wall_time{0};
   std::size_t memory_bytes{0};
   std::string message;
+
+  bool ok() const noexcept { return status == RunnerStatus::Success; }
+  explicit operator bool() const noexcept {
+    return status == RunnerStatus::Success;
+  }
 };
 
 RunnerResult run_exe(const RunnerOptions &opts);

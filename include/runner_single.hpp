@@ -20,6 +20,9 @@ struct SingleRunOption {
 struct SingleRunResult {
   RunnerResult result;
   std::string captured;
+
+  bool ok() const noexcept { return result.ok(); }
+  explicit operator bool() const noexcept { return result.ok(); }
 };
 
 [[nodiscard]] SingleRunResult run_single(const SingleRunOption &opts);

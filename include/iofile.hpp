@@ -20,6 +20,9 @@ struct IOFileResult {
   bool success{false};
   std::vector<FilePair> pairs;
   std::string message;
+
+  bool ok() const noexcept { return success; }
+  explicit operator bool() const noexcept { return success; }
 };
 
 IOFileResult gen_filepair(const IOFileOption &opts);

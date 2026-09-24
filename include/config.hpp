@@ -38,6 +38,9 @@ struct ConfigResult {
   bool success{false};
   AppConfig config;
   std::string message;
+
+  bool ok() const noexcept { return success; }
+  explicit operator bool() const noexcept { return success; }
 };
 
 [[nodiscard]] ConfigResult load_config(const std::filesystem::path &path);

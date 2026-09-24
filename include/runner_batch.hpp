@@ -22,6 +22,9 @@ struct BatchOptions {
 struct ResultUnit {
   std::string name;
   RunnerResult result;
+
+  bool ok() const noexcept { return result.ok(); }
+  explicit operator bool() const noexcept { return result.ok(); }
 };
 
 [[nodiscard]] std::vector<ResultUnit> run_all(const BatchOptions &opts);

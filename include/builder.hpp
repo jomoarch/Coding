@@ -19,6 +19,9 @@ struct BuildResult {
   bool success{false};
   bool rebuilt{false};
   std::string message;
+
+  bool ok() const noexcept { return success; }
+  explicit operator bool() const noexcept { return success; }
 };
 
 BuildResult ensure_built(const BuildOption &opts);

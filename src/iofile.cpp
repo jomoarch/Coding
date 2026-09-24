@@ -1,4 +1,5 @@
 #include "iofile.hpp"
+#include "cleaner.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -81,18 +82,10 @@ IOFileResult gen_filepair(const IOFileOption &opts) {
                   opts.output_dir.string();
       return r;
     }
-    for (const auto &e :
-         std::filesystem::directory_iterator(opts.output_dir, ec)) {
-      if (ec)
-        break;
-      std::error_code rec;
-      std::filesystem::remove_all(e.path(), rec);
-      if (rec) {
-        r.message = "Failed to remove " + e.path().string() + ": " +
-                    rec.message() + " (code " + std::to_string(rec.value()) +
-                    ")";
-        return r;
-      }
+    auto res = clean_dir(opts.output_dir);
+    if (!res) {
+      r.message = res.message;
+      return r;
     }
   }
 

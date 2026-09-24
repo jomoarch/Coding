@@ -152,7 +152,7 @@ int run(Mode mode, int argc, char **argv) {
   }
 
   ConfigResult cfg_res = load_config(cli.config_path);
-  if (!cfg_res.success) {
+  if (!cfg_res) {
     std::cerr << color::err("[config] ", cfg_res.message) << "\n";
     return 2;
   }

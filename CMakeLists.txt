@@ -23,6 +23,7 @@ set(COMMON_SOURCES
   src/iofile.cpp
   src/builder.cpp
   src/color.cpp
+  src/cleaner.cpp
 )
 
 add_library(coding_common STATIC ${COMMON_SOURCES})
@@ -47,3 +48,4 @@ endfunction()
 add_coding_app(cg_b src/main_batch.cpp)
 add_coding_app(cg_s src/main_single.cpp)
 add_coding_app(cg_i src/main_interactive.cpp)
+add_coding_app(clean_dir src/main_clean_dir.cpp)

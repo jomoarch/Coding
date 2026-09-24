@@ -44,6 +44,7 @@ BuildStep build_step(const AppConfig &cfg) {
 }
 
 void print_build_line(const AppConfig &cfg, const BuildStep &s) {
+  color::Scope red(std::cout, {color::Code::Green, color::Code::Bold});
   if (s.rebuilt)
     std::cout << "[build] built -> " << cfg.exe_path.string() << '\n';
   else
@@ -227,7 +228,7 @@ int run_batch(const AppConfig &cfg) {
   io_opts.output_dir = cfg.output_dir;
 
   auto io_res = gen_filepair(io_opts);
-  if (!io_res.success) {
+  if (!io_res) {
     std::cerr << color::err("[io] ", io_res.message) << "\n";
     return 2;
   }

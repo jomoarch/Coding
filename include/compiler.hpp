@@ -14,6 +14,9 @@ struct CompilerOptions {
 struct CompilerResult {
   bool success{false};
   std::string message;
+
+    bool ok() const noexcept { return success; }
+  explicit operator bool() const noexcept { return success; }
 };
 
 CompilerResult compile_source(const CompilerOptions &opts);
