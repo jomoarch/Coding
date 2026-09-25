@@ -44,6 +44,29 @@ std::wstring quote_arg(const std::wstring &arg) {
   return out;
 }
 
+std::string to_lower_ascii(std::string s) {
+  for (char &c : s)
+    if (c >= 'A' && c <= 'Z')
+      c = static_cast<char>(c - 'A' + 'a');
+  return s;
+}
+
+std::string compiler_stem(const std::string &argv0) {
+  std::string name = std::filesystem::path(argv0).filename().string();
+  if (name.size() > 4 && to_lower_ascii(name.substr(name.size() - 4)) == ".exe")
+    name.resize(name.size() - 4);
+  return to_lower_ascii(name);
+}
+
+bool is_msvc_style(const std::string &argv0) {
+  const std::string stem = compiler_stem(argv0);
+  return stem == "cl" || stem == "clang-cl";
+}
+
+bool is_c_source(const std::filesystem::path &p) {
+  return to_lower_ascii(p.extension().string()) == ".c";
+}
+
 } // namespace
 
 CompilerResult compile_source(const CompilerOptions &opts) {
@@ -77,6 +100,23 @@ CompilerResult compile_source(const CompilerOptions &opts) {
     }
   }
 
+  bool inject = false;
+  bool msvc_flag = false;
+  if (!opts.inject_header.empty()) {
+    if (!std::filesystem::exists(opts.inject_header, ec)) {
+      r.message = "Injected header not found: " + opts.inject_header.string();
+      return r;
+    }
+    if (is_c_source(opts.source_path)) {
+      r.message = "Cannot inject a C++ header into " +
+                  opts.source_path.string() +
+                  "; use a C++ source or set [inject].enabled = false";
+      return r;
+    }
+    inject = true;
+    msvc_flag = !opts.args.empty() && is_msvc_style(opts.args[0]);
+  }
+
   std::wstring cmd;
   if (opts.args.empty()) {
     cmd = L"g++ -std=c++17";
@@ -85,6 +125,17 @@ CompilerResult compile_source(const CompilerOptions &opts) {
     for (std::size_t i = 1; i < opts.args.size(); ++i) {
       cmd += L' ';
       cmd += quote_arg(to_wide(opts.args[i]));
+    }
+  }
+
+  if (inject) {
+    cmd += L' ';
+    if (msvc_flag) {
+      cmd += L"/FI";
+      cmd += quote_arg(opts.inject_header.wstring());
+    } else {
+      cmd += L"-include ";
+      cmd += quote_arg(opts.inject_header.wstring());
     }
   }
 

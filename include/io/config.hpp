@@ -15,7 +15,12 @@ struct AppConfig {
   // compiler
   std::filesystem::path source_path;
   std::filesystem::path exe_path;
+  std::filesystem::path exe_path_probe;
   std::vector<std::string> args;
+
+  // inject
+  bool inject_probe{true};
+  std::filesystem::path inject_header;
 
   // runner
   std::filesystem::path work_dir;

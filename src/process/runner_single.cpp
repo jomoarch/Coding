@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <string_view>
@@ -13,6 +14,19 @@
 #include <vector>
 
 namespace {
+
+inline constexpr char kFramedStdout = '\x01';
+inline constexpr char kFramedStderr = '\x02';
+
+void write_styled(bool colorize, const color::Style *style, const char *data,
+                  std::size_t n) {
+  const std::string_view chunk(data, n);
+  if (colorize && style)
+    style->write(std::cout, chunk);
+  else
+    std::cout.write(chunk.data(), static_cast<std::streamsize>(chunk.size()));
+  std::cout.flush();
+}
 
 void pump_both(HANDLE hOut, HANDLE hErr, bool echo, bool colorize,
                const color::Style *out_style, const color::Style *err_style,
@@ -57,12 +71,100 @@ void pump_both(HANDLE hOut, HANDLE hErr, bool echo, bool colorize,
     if (!echo)
       continue;
 
-    const std::string_view chunk(buf.data(), n);
-    if (colorize && styles[i])
-      styles[i]->write(std::cout, chunk);
-    else
-      std::cout.write(chunk.data(), static_cast<std::streamsize>(chunk.size()));
-    std::cout.flush();
+    write_styled(colorize, styles[i], buf.data(), n);
+  }
+}
+
+class TagSplitter {
+public:
+  TagSplitter(bool echo, bool colorize, const color::Style *out_style,
+              const color::Style *err_style, std::string *out_sink)
+      : echo_(echo), colorize_(colorize), out_style_(out_style),
+        err_style_(err_style), out_sink_(out_sink) {}
+
+  void feed(const char *data, std::size_t n) {
+    bytes_ += n;
+    std::size_t start = 0;
+    for (std::size_t i = 0; i < n; ++i) {
+      const char c = data[i];
+      if (c != kFramedStdout && c != kFramedStderr)
+        continue;
+      if (i != start)
+        emit(data + start, i - start);
+      current_ = c;
+      saw_tag_ = true;
+      start = i + 1;
+    }
+    if (start != n)
+      emit(data + start, n - start);
+  }
+
+  bool saw_tag() const noexcept { return saw_tag_; }
+  std::size_t bytes() const noexcept { return bytes_; }
+
+private:
+  void emit(const char *data, std::size_t n) {
+    if (current_ == kFramedStderr) {
+      if (echo_)
+        write_styled(colorize_, err_style_, data, n);
+      return;
+    }
+
+    if (out_sink_)
+      out_sink_->append(data, n);
+    if (echo_)
+      write_styled(colorize_, out_style_, data, n);
+  }
+
+  bool echo_;
+  bool colorize_;
+  const color::Style *out_style_;
+  const color::Style *err_style_;
+  std::string *out_sink_;
+  char current_{kFramedStdout};
+  bool saw_tag_{false};
+  std::size_t bytes_{0};
+};
+
+void pump_tagged(HANDLE hFramed, HANDLE hRawErr, TagSplitter &splitter,
+                 std::string *raw_err_sink) {
+  HANDLE handles[2] = {hFramed, hRawErr};
+  bool alive[2] = {true, true};
+
+  std::vector<char> buf(4096);
+
+  while (alive[0] || alive[1]) {
+    HANDLE wait_arr[2];
+    int map[2];
+    DWORD cnt = 0;
+    for (int i = 0; i < 2; ++i) {
+      if (alive[i]) {
+        wait_arr[cnt] = handles[i];
+        map[cnt] = i;
+        ++cnt;
+      }
+    }
+    if (cnt == 0)
+      break;
+
+    DWORD r = WaitForMultipleObjects(cnt, wait_arr, FALSE, INFINITE);
+    if (r < WAIT_OBJECT_0 || r >= WAIT_OBJECT_0 + cnt)
+      break;
+
+    const int i = map[r - WAIT_OBJECT_0];
+
+    DWORD n = 0;
+    if (!ReadFile(handles[i], buf.data(), static_cast<DWORD>(buf.size()), &n,
+                  nullptr) ||
+        n == 0) {
+      alive[i] = false;
+      continue;
+    }
+
+    if (i == 0)
+      splitter.feed(buf.data(), n);
+    else if (raw_err_sink)
+      raw_err_sink->append(buf.data(), n);
   }
 }
 
@@ -207,9 +309,18 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   const color::Style stderr_style({color::Code::Red});
 
   std::string captured;
-  std::thread pump(pump_both, hOutRead.get(), hErrRead.get(), opts.echo,
-                   opts.colorize_output, &stdout_style, &stderr_style,
-                   &captured);
+  std::string raw_err;
+  TagSplitter splitter(opts.echo, opts.colorize_output, &stdout_style,
+                       &stderr_style, &captured);
+
+  std::thread pump;
+  if (opts.tagged_stream)
+    pump = std::thread(pump_tagged, hOutRead.get(), hErrRead.get(),
+                       std::ref(splitter), &raw_err);
+  else
+    pump = std::thread(pump_both, hOutRead.get(), hErrRead.get(), opts.echo,
+                       opts.colorize_output, &stdout_style, &stderr_style,
+                       &captured);
 
   if (hStdinWrite.valid()) {
     std::size_t left = opts.input_text.size();
@@ -231,6 +342,15 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   pump.join();
   hOutRead.reset();
   hErrRead.reset();
+
+  if (opts.tagged_stream && !raw_err.empty() && opts.echo)
+    write_styled(opts.colorize_output, &stderr_style, raw_err.data(),
+                 raw_err.size());
+
+  if (opts.tagged_stream && splitter.bytes() > 0 && !splitter.saw_tag())
+    out.warning =
+        "the program produced unframed output; it was probably built without "
+        "the injected header (rebuild with --force)";
 
   const auto t1 = std::chrono::steady_clock::now();
   out.result.wall_time =

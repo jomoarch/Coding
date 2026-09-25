@@ -11,6 +11,8 @@ struct CompilerOptions {
   std::filesystem::path source_path;
   std::filesystem::path output_path;
   std::vector<std::string> args;
+
+  std::filesystem::path inject_header;
 };
 
 struct CompilerResult : ResultBase {};

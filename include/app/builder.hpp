@@ -12,6 +12,8 @@ struct BuildOption {
 
   std::vector<std::filesystem::path> extra_deps;
 
+  std::filesystem::path inject_header;
+
   bool force_rebuild{false};
 };
 

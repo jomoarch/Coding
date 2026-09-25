@@ -17,8 +17,10 @@
 #include <cstdarg>
 #include <cstddef>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <mutex>
 #include <streambuf>
 #include <string>
 
@@ -31,42 +33,57 @@ namespace detail {
 
 inline constexpr std::size_t kBufSize = 64 * 1024;
 
+inline void write_all(HANDLE handle, const char *data, std::size_t n) noexcept {
+  while (n > 0) {
+    const DWORD chunk = static_cast<DWORD>(
+        n < (1u << 30) ? n : static_cast<std::size_t>(1u << 30));
+    DWORD written = 0;
+    if (!::WriteFile(handle, data, chunk, &written, nullptr) || written == 0)
+      return;
+    data += written;
+    n -= written;
+  }
+}
+
 struct Sink {
   HANDLE handle;
   char buf[kBufSize];
   std::size_t used;
   char current_tag;
+  std::mutex mu;
 
   Sink() noexcept
       : handle(::GetStdHandle(STD_OUTPUT_HANDLE)), used(0), current_tag(0) {}
 
-  void flush() noexcept {
+  void flush_locked() noexcept {
     if (used == 0)
       return;
-    DWORD written = 0;
-    ::WriteFile(handle, buf, static_cast<DWORD>(used), &written, nullptr);
+    write_all(handle, buf, used);
     used = 0;
     current_tag = 0;
   }
 
+  void flush() noexcept {
+    std::lock_guard<std::mutex> lock(mu);
+    flush_locked();
+  }
+
   void push(char tag, const char *data, std::size_t n) noexcept {
-    if (n == 0)
+    if (data == nullptr || n == 0)
       return;
 
-    const bool need_tag = (tag != current_tag);
-    const std::size_t need = (need_tag ? 1u : 0u) + n;
+    std::lock_guard<std::mutex> lock(mu);
 
-    if (used + need > kBufSize)
-      flush();
-
-    if (need > kBufSize) {
-      DWORD written = 0;
-      if (need_tag)
-        ::WriteFile(handle, &tag, 1, &written, nullptr);
-      ::WriteFile(handle, data, static_cast<DWORD>(n), &written, nullptr);
+    if (n >= kBufSize) {
+      flush_locked();
+      write_all(handle, &tag, 1);
+      write_all(handle, data, n);
       current_tag = tag;
       return;
     }
+
+    if (used + (tag != current_tag ? 1u : 0u) + n > kBufSize)
+      flush_locked();
 
     if (tag != current_tag) {
       buf[used++] = tag;
@@ -74,15 +91,28 @@ struct Sink {
     }
     std::memcpy(buf + used, data, n);
     used += n;
+
+    if (std::memchr(data, '\n', n) != nullptr)
+      flush_locked();
   }
 };
 
+inline Sink &sink() noexcept;
+
+inline void flush_at_exit() noexcept { sink().flush(); }
+
 inline Sink &sink() noexcept {
-  static Sink *s = new Sink();
+  static Sink *s = nullptr;
+  if (s == nullptr) {
+    s = new Sink();
+    (void)std::atexit(&flush_at_exit);
+  }
   return *s;
 }
 
 } // namespace detail
+
+inline void flush() noexcept { detail::sink().flush(); }
 
 class TaggedBuf final : public std::streambuf {
 public:
@@ -142,6 +172,8 @@ struct AutoInstall {
 };
 static AutoInstall g_auto_install;
 } // namespace
+
+extern "C" inline void probe_flush(void) { probe::flush(); }
 
 extern "C" inline int probe_printf(const char *fmt, ...) {
   if (fmt == nullptr)
@@ -279,6 +311,22 @@ extern "C" inline int probe_fflush(FILE *stream) {
   return ::fflush(stream);
 }
 
+extern "C" inline int probe_scanf(const char *fmt, ...) {
+  probe::flush();
+  if (fmt == nullptr)
+    return EOF;
+  va_list ap;
+  va_start(ap, fmt);
+  int n = ::vscanf(fmt, ap);
+  va_end(ap);
+  return n;
+}
+
+extern "C" inline int probe_getchar(void) {
+  probe::flush();
+  return ::getchar();
+}
+
 #ifdef printf
 #undef printf
 #endif
@@ -306,6 +354,12 @@ extern "C" inline int probe_fflush(FILE *stream) {
 #ifdef fflush
 #undef fflush
 #endif
+#ifdef scanf
+#undef scanf
+#endif
+#ifdef getchar
+#undef getchar
+#endif
 
 #define printf(...) probe_printf(__VA_ARGS__)
 #define fprintf(stream, ...) probe_fprintf(stream, __VA_ARGS__)
@@ -316,6 +370,8 @@ extern "C" inline int probe_fflush(FILE *stream) {
 #define putc(ch, stream) probe_fputc(ch, stream)
 #define fwrite(ptr, size, count, stream) probe_fwrite(ptr, size, count, stream)
 #define fflush(stream) probe_fflush(stream)
+#define scanf(...) probe_scanf(__VA_ARGS__)
+#define getchar() probe_getchar()
 
 #endif // _WIN32
 

@@ -1,11 +1,30 @@
 [compiler]
 # Required. The solution to compile.
 source = "test/src/solution.cpp"
-# Required. Where the executable is written.
+# Required. Where the plain executable is written; used by cg_b. Nothing is
+# injected into this build.
 output = "test/bin/solution.exe"
+# Optional. Where the probe executable is written; used by cg_s / cg_i. These
+# two modes need a second binary because include/inject/probe.h is forced into
+# the translation unit, and cg_b must not see it. Defaults to `output` with
+# ".probe" before the extension, i.e. test/bin/solution.probe.exe. Must differ
+# from `output`.
+# output_probe = "test/bin/solution.probe.exe"
 # Optional. Full compiler command line; the source and "-o <output>" are
 # appended automatically. Defaults to "g++ -std=c++17".
 args = ["g++", "-std=c++17", "-O2", "-Wall", "-Wextra"]
+
+[inject]
+# Optional. Inject the probe header into the cg_s / cg_i build so stdout and
+# stderr come back framed on one stream and can be split without losing the
+# order in which the program produced them. Set to false to drop back to two
+# independent pipes, which is faster to build but cannot preserve that order.
+enabled = true
+# Optional. Header forced into that build (g++/clang++: -include, cl.exe: /FI).
+# Defaults to include/inject/probe.h next to this config file, falling back to
+# the directory holding cg_*.exe. It is also a build dependency: touching it
+# invalidates the probe executable.
+# header = "include/inject/probe.h"
 
 [runner]
 # Required. Working directory for every run; each test case also gets its own

@@ -15,11 +15,14 @@ struct SingleRunOption {
 
   bool echo{true};
   bool colorize_output{false};
+
+  bool tagged_stream{false};
 };
 
 struct SingleRunResult {
   RunnerResult result;
   std::string captured;
+  std::string warning;
 
   bool ok() const noexcept { return result.ok(); }
   explicit operator bool() const noexcept { return result.ok(); }

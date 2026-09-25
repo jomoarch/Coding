@@ -20,12 +20,27 @@ namespace fs = std::filesystem;
 
 namespace {
 
-BuildResult build_step(const AppConfig &cfg) {
+enum class BuildTarget { Batch, Probe };
+
+std::filesystem::path target_exe(const AppConfig &cfg, BuildTarget target) {
+  return target == BuildTarget::Probe ? cfg.exe_path_probe : cfg.exe_path;
+}
+
+bool uses_probe_build(const AppConfig &cfg) {
+  return cfg.inject_probe && !cfg.inject_header.empty();
+}
+
+BuildResult build_step(const AppConfig &cfg, BuildTarget target) {
   BuildOption opt;
   opt.source_path = cfg.source_path;
-  opt.output_path = cfg.exe_path;
+  opt.output_path = target_exe(cfg, target);
   opt.args = cfg.args;
   opt.extra_deps.push_back(cfg.config_path);
+
+  if (target == BuildTarget::Probe && uses_probe_build(cfg)) {
+    opt.inject_header = cfg.inject_header;
+    opt.extra_deps.push_back(cfg.inject_header);
+  }
   opt.force_rebuild = cfg.force_rebuild;
 
   const BuildResult br = ensure_built(opt);
@@ -35,13 +50,12 @@ BuildResult build_step(const AppConfig &cfg) {
   return br;
 }
 
-void print_build_line(const AppConfig &cfg, const BuildResult &s) {
+void print_build_line(const std::filesystem::path &exe, const BuildResult &s) {
   color::Scope red(std::cout, {color::Code::Green, color::Code::Bold});
   if (s.rebuilt)
-    std::cout << "[build] built -> " << cfg.exe_path.string() << '\n';
+    std::cout << "[build] built -> " << exe.string() << '\n';
   else
-    std::cout << "[build] up-to-date ("
-              << cfg.exe_path.filename().string() + ")\n";
+    std::cout << "[build] up-to-date (" << exe.filename().string() << ")\n";
 }
 
 std::string trim_lower(std::string_view s) {
@@ -89,6 +103,9 @@ inline std::string bg(std::string_view s) {
 }
 
 int finish_single(const AppConfig &cfg, const SingleRunResult &run) {
+  if (!run.warning.empty())
+    std::cerr << color::warn("[probe] ", run.warning) << "\n";
+
   auto status = [&]() -> std::string {
     switch (run.result.status) {
     case RunnerStatus::Success:
@@ -135,19 +152,20 @@ int finish_single(const AppConfig &cfg, const SingleRunResult &run) {
 } // namespace
 
 int run_interactive(const AppConfig &cfg) {
-  const BuildResult built = build_step(cfg);
+  const BuildResult built = build_step(cfg, BuildTarget::Probe);
   if (!built)
     return 2;
-  print_build_line(cfg, built);
+  print_build_line(cfg.exe_path_probe, built);
 
   std::cout << "[run] interactive mode\n";
 
   SingleRunOption opt;
-  opt.exe_path = cfg.exe_path;
+  opt.exe_path = cfg.exe_path_probe;
   opt.work_dir = cfg.work_dir;
   opt.stdin_from_console = true;
   opt.echo = true;
   opt.colorize_output = cfg.colorize_output;
+  opt.tagged_stream = uses_probe_build(cfg);
 
   return finish_single(cfg, run_single(opt));
 }
@@ -169,10 +187,10 @@ int run_single_file(const AppConfig &cfg) {
   ss << in.rdbuf();
   const std::string input = ss.str();
 
-  const BuildResult built = build_step(cfg);
+  const BuildResult built = build_step(cfg, BuildTarget::Probe);
   if (!built)
     return 2;
-  print_build_line(cfg, built);
+  print_build_line(cfg.exe_path_probe, built);
 
   const std::size_t input_size = input.size();
   std::cout << color::ok("[io] input <- ", cfg.single_input, " (", input_size,
@@ -180,12 +198,13 @@ int run_single_file(const AppConfig &cfg) {
             << "\n\n--- output ---\n";
 
   SingleRunOption opt;
-  opt.exe_path = cfg.exe_path;
+  opt.exe_path = cfg.exe_path_probe;
   opt.work_dir = cfg.work_dir;
   opt.stdin_from_console = false;
   opt.input_text = input;
   opt.echo = true;
   opt.colorize_output = cfg.colorize_output;
+  opt.tagged_stream = uses_probe_build(cfg);
 
   return finish_single(cfg, run_single(opt));
 }
@@ -204,7 +223,7 @@ int run_batch(const AppConfig &cfg) {
             << "  memory    : " << (cfg.memory_limit_bytes >> 20) << " MB\n";
 
   std::cout << "\n[1/3] Compiling...\n";
-  const BuildResult built = build_step(cfg);
+  const BuildResult built = build_step(cfg, BuildTarget::Batch);
   if (!built)
     return 2;
   if (built.rebuilt)

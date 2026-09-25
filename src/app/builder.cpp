@@ -50,6 +50,7 @@ BuildResult ensure_built(const BuildOption &opts) {
   co.source_path = opts.source_path;
   co.output_path = opts.output_path;
   co.args = opts.args;
+  co.inject_header = opts.inject_header;
 
   auto cr = compile_source(co);
   r.success = cr.success;
