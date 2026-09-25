@@ -123,7 +123,7 @@ CompilerResult compile_source(const CompilerOptions &opts) {
     return r;
   }
   HandleGuard hProcess(pi.hProcess);
-  HandleGuard hThead(pi.hThread);
+  HandleGuard hThread(pi.hThread);
 
   hWirte.reset();
   std::string output = read_pipe(hRead.get());

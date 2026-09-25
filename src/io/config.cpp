@@ -14,6 +14,46 @@ std::filesystem::path resolve(const std::filesystem::path &base,
   return base / p;
 }
 
+template <class T>
+void read_field(const toml::table &t, std::string_view key, T &out) {
+  if (auto v = t[key].value<T>())
+    out = *v;
+}
+
+struct identity_fn {
+  template <class T> T &&operator()(T &&x) const noexcept {
+    return std::forward<T>(x);
+  }
+};
+
+template <class T, class U, class F = identity_fn>
+void read_field_as(const toml::table &t, std::string_view key, U &out,
+                   F &&transform = {}) {
+  if (auto v = t[key].value<T>())
+    out = std::invoke(std::forward<F>(transform), *v);
+}
+
+template <class F>
+void read_section(const toml::table &tbl, std::string_view name, F &&fn) {
+  if (auto *t = tbl[name].as_table())
+    std::forward<F>(fn)(*t);
+}
+
+inline void read_string_array(const toml::table &t, std::string_view key,
+                              std::vector<std::string> &out) {
+  if (auto *arr = t[key].as_array()) {
+    out.reserve(arr->size());
+    for (const auto &elem : *arr)
+      if (auto s = elem.value<std::string>())
+        out.push_back(*s);
+  }
+}
+
+template <class... Paths>
+void resolve_all(const std::filesystem::path &base, Paths &...paths) {
+  ((paths = resolve(base, paths)), ...);
+}
+
 } // namespace
 
 ConfigResult load_config(const std::filesystem::path &path) {
@@ -41,57 +81,40 @@ ConfigResult load_config(const std::filesystem::path &path) {
   AppConfig &c = r.config;
 
   // [compiler]
-  if (auto *t = tbl["compiler"].as_table()) {
-    if (auto v = (*t)["source"].value<std::string>())
-      c.source_path = *v;
-    if (auto v = (*t)["output"].value<std::string>())
-      c.exe_path = *v;
-    if (auto *arr = (*t)["args"].as_array()) {
-      for (const auto &elem : *arr) {
-        if (auto s = elem.value<std::string>())
-          c.args.push_back(*s);
-      }
-    }
-  }
+  read_section(tbl, "compiler", [&](const toml::table &t) {
+    read_field(t, "source", c.source_path);
+    read_field(t, "output", c.exe_path);
+    read_string_array(t, "args", c.args);
+  });
 
   // [runner]
-  if (auto *t = tbl["runner"].as_table()) {
-    if (auto v = (*t)["work_dir"].value<std::string>())
-      c.work_dir = *v;
-    if (auto v = (*t)["time_limit_ms"].value<int64_t>())
-      c.time_limit = std::chrono::milliseconds(*v);
-    if (auto v = (*t)["memory_limit_mb"].value<int64_t>())
-      c.memory_limit_bytes = static_cast<std::size_t>(*v) * 1024 * 1024;
-  }
+  read_section(tbl, "runner", [&](const toml::table &t) {
+    read_field(t, "work_dir", c.work_dir);
+    read_field_as<int64_t>(t, "time_limit_ms", c.time_limit, [](int64_t v) {
+      return std::chrono::milliseconds(v);
+    });
+    read_field_as<int64_t>(
+        t, "memory_limit_mb", c.memory_limit_bytes,
+        [](int64_t v) { return static_cast<std::size_t>(v) * 1024 * 1024; });
+  });
 
   // [io]
-  if (auto *t = tbl["io"].as_table()) {
-    if (auto v = (*t)["input_dir"].value<std::string>())
-      c.input_dir = *v;
-    if (auto v = (*t)["output_dir"].value<std::string>())
-      c.output_dir = *v;
-    if (auto v = (*t)["single_input"].value<std::string>())
-      c.single_input = *v;
-    if (auto v = (*t)["single_output"].value<std::string>())
-      c.single_output = *v;
-    if (auto v = (*t)["colorize_output"].value<bool>())
-      c.colorize_output = *v;
-  }
+  read_section(tbl, "io", [&](const toml::table &t) {
+    read_field(t, "input_dir", c.input_dir);
+    read_field(t, "output_dir", c.output_dir);
+    read_field(t, "single_input", c.single_input);
+    read_field(t, "single_output", c.single_output);
+    read_field(t, "colorize_output", c.colorize_output);
+  });
 
   // [thread]
-  if (auto *t = tbl["thread"].as_table()) {
-    if (auto v = (*t)["thread_max"].value<std::size_t>())
-      c.thread_max = *v;
-  }
+  read_section(tbl, "thread", [&](const toml::table &t) {
+    read_field(t, "thread_max", c.thread_max);
+  });
 
   const auto base = std::filesystem::absolute(path).parent_path();
-  c.source_path = resolve(base, c.source_path);
-  c.exe_path = resolve(base, c.exe_path);
-  c.work_dir = resolve(base, c.work_dir);
-  c.input_dir = resolve(base, c.input_dir);
-  c.output_dir = resolve(base, c.output_dir);
-  c.single_input = resolve(base, c.single_input);
-  c.single_output = resolve(base, c.single_output);
+  resolve_all(base, c.source_path, c.exe_path, c.work_dir, c.input_dir,
+              c.output_dir, c.single_input, c.single_output);
 
   if (c.source_path.empty()) {
     r.message = "Config: [compiler].source is required";
