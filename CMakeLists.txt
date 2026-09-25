@@ -26,6 +26,7 @@ set(PROCESS_SOURCES
   src/process/runner.cpp
   src/process/runner_single.cpp
   src/process/runner_batch.cpp
+  src/process/process_launcher.cpp
 )
 
 set(APP_SOURCES

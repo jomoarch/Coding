@@ -1,18 +1,12 @@
 #ifndef RUNNER_HPP
 #define RUNNER_HPP
 
+#include "process/status.hpp"
+
 #include <string>
 #include <cstddef>
 #include <filesystem>
 #include <chrono>
-
-enum class RunnerStatus {
-  Success,
-  SystemError,
-  RuntimeError,
-  TimeLimitExceeded,
-  MemoryLimitExceeded
-};
 
 struct RunnerOptions {
   std::filesystem::path exe_path;
