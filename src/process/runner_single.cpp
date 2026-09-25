@@ -8,31 +8,58 @@
 #include <chrono>
 #include <functional>
 #include <iostream>
-#include <mutex>
 #include <string_view>
 #include <thread>
 #include <vector>
 
 namespace {
 
-void pump_to_terminal(HANDLE hRead, bool echo, bool colorize,
-                      const color::Style *style, std::string *sink,
-                      std::mutex &echo_mutex) {
+void pump_both(HANDLE hOut, HANDLE hErr, bool echo, bool colorize,
+               const color::Style *out_style, const color::Style *err_style,
+               std::string *out_sink) {
+  HANDLE handles[2] = {hOut, hErr};
+  const color::Style *styles[2] = {out_style, err_style};
+  bool alive[2] = {true, true};
+
   std::vector<char> buf(4096);
-  DWORD n = 0;
-  while (ReadFile(hRead, buf.data(), static_cast<DWORD>(buf.size()), &n,
-                  nullptr) &&
-         n > 0) {
-    if (sink != nullptr)
-      sink->append(buf.data(), n);
+
+  while (alive[0] || alive[1]) {
+    HANDLE wait_arr[2];
+    int map[2];
+    DWORD cnt = 0;
+    for (int i = 0; i < 2; ++i) {
+      if (alive[i]) {
+        wait_arr[cnt] = handles[i];
+        map[cnt] = i;
+        ++cnt;
+      }
+    }
+    if (cnt == 0)
+      break;
+
+    DWORD r = WaitForMultipleObjects(cnt, wait_arr, FALSE, INFINITE);
+    if (r < WAIT_OBJECT_0 || r >= WAIT_OBJECT_0 + cnt)
+      break;
+
+    int i = map[r - WAIT_OBJECT_0];
+
+    DWORD n = 0;
+    if (!ReadFile(handles[i], buf.data(), static_cast<DWORD>(buf.size()), &n,
+                  nullptr) ||
+        n == 0) {
+      alive[i] = false;
+      continue;
+    }
+
+    if (i == 0 && out_sink)
+      out_sink->append(buf.data(), n);
 
     if (!echo)
       continue;
 
     const std::string_view chunk(buf.data(), n);
-    const std::lock_guard<std::mutex> lock(echo_mutex);
-    if (colorize)
-      style->write(std::cout, chunk);
+    if (colorize && styles[i])
+      styles[i]->write(std::cout, chunk);
     else
       std::cout.write(chunk.data(), static_cast<std::streamsize>(chunk.size()));
     std::cout.flush();
@@ -180,13 +207,9 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   const color::Style stderr_style({color::Code::Red});
 
   std::string captured;
-  std::mutex echo_mutex;
-  std::thread out_pump(pump_to_terminal, hOutRead.get(), opts.echo,
-                       opts.colorize_output, &stdout_style, &captured,
-                       std::ref(echo_mutex));
-  std::thread err_pump(pump_to_terminal, hErrRead.get(), opts.echo,
-                       opts.colorize_output, &stderr_style, nullptr,
-                       std::ref(echo_mutex));
+  std::thread pump(pump_both, hOutRead.get(), hErrRead.get(), opts.echo,
+                   opts.colorize_output, &stdout_style, &stderr_style,
+                   &captured);
 
   if (hStdinWrite.valid()) {
     std::size_t left = opts.input_text.size();
@@ -205,8 +228,7 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   }
 
   WaitForSingleObject(pi.hProcess, INFINITE);
-  out_pump.join();
-  err_pump.join();
+  pump.join();
   hOutRead.reset();
   hErrRead.reset();
 
