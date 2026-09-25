@@ -85,8 +85,22 @@ ConfigResult load_config(const std::filesystem::path &path) {
     read_field(t, "output", c.exe_path);
     read_string_array(t, "args", c.args);
   });
+  read_section(tbl, "compiler", [&](const toml::table &t) {
+    read_field(t, "source", c.source_path);
+    read_field(t, "output", c.exe_path);
+    read_string_array(t, "args", c.args);
+  });
 
   // [runner]
+  read_section(tbl, "runner", [&](const toml::table &t) {
+    read_field(t, "work_dir", c.work_dir);
+    read_field_as<int64_t>(t, "time_limit_ms", c.time_limit, [](int64_t v) {
+      return std::chrono::milliseconds(v);
+    });
+    read_field_as<int64_t>(
+        t, "memory_limit_mb", c.memory_limit_bytes,
+        [](int64_t v) { return static_cast<std::size_t>(v) * 1024 * 1024; });
+  });
   read_section(tbl, "runner", [&](const toml::table &t) {
     read_field(t, "work_dir", c.work_dir);
     read_field_as<int64_t>(t, "time_limit_ms", c.time_limit, [](int64_t v) {
@@ -105,13 +119,25 @@ ConfigResult load_config(const std::filesystem::path &path) {
     read_field(t, "single_output", c.single_output);
     read_field(t, "colorize_output", c.colorize_output);
   });
+  read_section(tbl, "io", [&](const toml::table &t) {
+    read_field(t, "input_dir", c.input_dir);
+    read_field(t, "output_dir", c.output_dir);
+    read_field(t, "single_input", c.single_input);
+    read_field(t, "single_output", c.single_output);
+    read_field(t, "colorize_output", c.colorize_output);
+  });
 
   // [thread]
   read_section(tbl, "thread", [&](const toml::table &t) {
     read_field(t, "thread_max", c.thread_max);
   });
+  read_section(tbl, "thread", [&](const toml::table &t) {
+    read_field(t, "thread_max", c.thread_max);
+  });
 
   const auto base = std::filesystem::absolute(path).parent_path();
+  resolve_all(base, c.source_path, c.exe_path, c.work_dir, c.input_dir,
+              c.output_dir, c.single_input, c.single_output);
   resolve_all(base, c.source_path, c.exe_path, c.work_dir, c.input_dir,
               c.output_dir, c.single_input, c.single_output);
 
