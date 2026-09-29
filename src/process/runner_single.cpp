@@ -12,11 +12,15 @@
 #include <string_view>
 #include <thread>
 #include <vector>
+#include <mutex>
+#include <atomic>
 
 namespace {
 
 inline constexpr char kFramedStdout = '\x01';
 inline constexpr char kFramedStderr = '\x02';
+
+std::mutex g_console_mutex;
 
 void write_styled(bool colorize, const color::Style *style, const char *data,
                   std::size_t n) {
@@ -29,6 +33,7 @@ void write_styled(bool colorize, const color::Style *style, const char *data,
   else
     buf.assign(data, n);
 
+  std::lock_guard<std::mutex> lock(g_console_mutex);
   std::cout.flush();
 
   HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -250,15 +255,38 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   HANDLE hChildStdin = INVALID_HANDLE_VALUE;
   bool stdin_is_console = false;
 
+  HANDLE hConsoleIn = INVALID_HANDLE_VALUE;
+  std::thread stdin_forwarder;
+  std::atomic<bool> stdin_stop{false};
+
   if (opts.stdin_from_console) {
-    hChildStdin = GetStdHandle(STD_INPUT_HANDLE);
-    if (hChildStdin == nullptr || hChildStdin == INVALID_HANDLE_VALUE) {
+    hConsoleIn = GetStdHandle(STD_INPUT_HANDLE);
+    if (hConsoleIn == nullptr || hConsoleIn == INVALID_HANDLE_VALUE) {
       out.result.message = "No console stdin available";
       return out;
     }
     DWORD mode = 0;
-    stdin_is_console = GetConsoleMode(hChildStdin, &mode) != FALSE;
-    SetHandleInformation(hChildStdin, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT);
+    stdin_is_console = GetConsoleMode(hConsoleIn, &mode) != FALSE;
+
+    if (stdin_is_console) {
+      SetConsoleMode(hConsoleIn, mode & ~ENABLE_ECHO_INPUT);
+
+      HANDLE r = INVALID_HANDLE_VALUE;
+      HANDLE w = INVALID_HANDLE_VALUE;
+      if (!CreatePipe(&r, &w, &sa, 0)) {
+        out.result.message =
+            "CreatePipe(stdin) failed: " + win::last_error_string();
+        return out;
+      }
+      hStdinRead.reset(r);
+      hStdinWrite.reset(w);
+      SetHandleInformation(hStdinWrite.get(), HANDLE_FLAG_INHERIT, 0);
+      hChildStdin = hStdinRead.get();
+    } else {
+      hChildStdin = hConsoleIn;
+      SetHandleInformation(hChildStdin, HANDLE_FLAG_INHERIT,
+                           HANDLE_FLAG_INHERIT);
+    }
   } else {
     HANDLE r = INVALID_HANDLE_VALUE;
     HANDLE w = INVALID_HANDLE_VALUE;
@@ -292,9 +320,7 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   si.hStdError = hErrWrite.get();
 
   PROCESS_INFORMATION pi{};
-  DWORD create_flags = CREATE_SUSPENDED;
-  if (!stdin_is_console)
-    create_flags |= CREATE_NO_WINDOW;
+  DWORD create_flags = CREATE_SUSPENDED | CREATE_NO_WINDOW;
 
   if (!CreateProcessW(nullptr, cmdBuf.data(), nullptr, nullptr, TRUE,
                       create_flags, nullptr, cwd, &si, &pi)) {
@@ -336,7 +362,37 @@ SingleRunResult run_single(const SingleRunOption &opts) {
                        opts.colorize_output, &stdout_style, &stderr_style,
                        &captured);
 
-  if (hStdinWrite.valid()) {
+  if (opts.stdin_from_console && stdin_is_console && hStdinWrite.valid()) {
+    stdin_forwarder = std::thread([&]() {
+      std::vector<char> fbuf(4096);
+      while (!stdin_stop.load(std::memory_order_relaxed)) {
+        DWORD r = ::WaitForSingleObject(hConsoleIn, 50);
+        if (r == WAIT_TIMEOUT)
+          continue;
+        if (r != WAIT_OBJECT_0)
+          break;
+
+        DWORD n = 0;
+        if (!::ReadFile(hConsoleIn, fbuf.data(),
+                        static_cast<DWORD>(fbuf.size()), &n, nullptr) ||
+            n == 0)
+          break;
+
+        {
+          std::lock_guard<std::mutex> lock(g_console_mutex);
+          std::cout.write(fbuf.data(), static_cast<std::streamsize>(n));
+          std::cout.flush();
+        }
+
+        DWORD written = 0;
+        if (!::WriteFile(hStdinWrite.get(), fbuf.data(), n, &written,
+                         nullptr) ||
+            written == 0)
+          break;
+      }
+      hStdinWrite.reset();
+    });
+  } else if (hStdinWrite.valid()) {
     std::size_t left = opts.input_text.size();
     const char *p = opts.input_text.data();
     while (left > 0) {
@@ -353,7 +409,19 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   }
 
   WaitForSingleObject(pi.hProcess, INFINITE);
+
+  stdin_stop.store(true, std::memory_order_relaxed);
+  if (stdin_forwarder.joinable())
+    stdin_forwarder.join();
+
   pump.join();
+
+  if (stdin_is_console && hConsoleIn != INVALID_HANDLE_VALUE) {
+    DWORD mode = 0;
+    if (GetConsoleMode(hConsoleIn, &mode))
+      SetConsoleMode(hConsoleIn, mode | ENABLE_ECHO_INPUT);
+  }
+
   hOutRead.reset();
   hErrRead.reset();
 
