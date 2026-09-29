@@ -238,9 +238,13 @@ public:
       return;
     }
     const std::string reset = reset_sequence(os);
-    os.write(set.data(), static_cast<std::streamsize>(set.size()));
-    os.write(body.data(), static_cast<std::streamsize>(body.size()));
-    os.write(reset.data(), static_cast<std::streamsize>(reset.size()));
+
+    std::string out;
+    out.reserve(set.size() + body.size() + reset.size());
+    out.append(set);
+    out.append(body);
+    out.append(reset);
+    os.write(out.data(), static_cast<std::streamsize>(out.size()));
   }
 
 private:

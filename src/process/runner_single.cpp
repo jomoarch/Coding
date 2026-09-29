@@ -20,11 +20,25 @@ inline constexpr char kFramedStderr = '\x02';
 
 void write_styled(bool colorize, const color::Style *style, const char *data,
                   std::size_t n) {
-  const std::string_view chunk(data, n);
+  if (n == 0)
+    return;
+
+  std::string buf;
   if (colorize && style)
-    style->write(std::cout, chunk);
+    buf = (*style)(std::string_view(data, n));
   else
-    std::cout.write(chunk.data(), static_cast<std::streamsize>(chunk.size()));
+    buf.assign(data, n);
+
+  std::cout.flush();
+
+  HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+  DWORD written = 0;
+  if (h && h != INVALID_HANDLE_VALUE &&
+      ::WriteFile(h, buf.data(), static_cast<DWORD>(buf.size()), &written,
+                  nullptr)) {
+    return;
+  }
+  std::cout.write(buf.data(), static_cast<std::streamsize>(buf.size()));
   std::cout.flush();
 }
 
