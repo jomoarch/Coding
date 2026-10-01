@@ -37,12 +37,6 @@ struct AppConfig {
   std::filesystem::path single_answer;
   bool colorize_output{true};
 
-  // compare
-  FeedbackLevel level{FeedbackLevel::Line};
-  bool list_unmatched{false};
-  std::size_t max_lines{0};
-  bool token_diff{false};
-
   // thread
   std::size_t thread_max{1};
 
