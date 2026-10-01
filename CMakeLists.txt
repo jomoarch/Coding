@@ -82,7 +82,7 @@ function(add_coding_app exe_name main_src)
   add_executable(${exe_name} ${main_src})
   target_link_libraries(${exe_name} PRIVATE coding_common)
   set_target_properties(${exe_name} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
   )
 endfunction()
 
