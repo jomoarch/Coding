@@ -167,44 +167,8 @@ ConfigResult load_config(const std::filesystem::path &path) {
       c.inject_header = local;
   }
 
-  if (c.source_path.empty()) {
-    r.message = "Config: [compiler].source is required";
-    return r;
-  }
-  if (c.exe_path.empty()) {
-    r.message = "Config: [compiler].output is required";
-    return r;
-  }
-  if (c.work_dir.empty()) {
-    r.message = "Config: [runner].work_dir is required";
-    return r;
-  }
-  if (c.input_dir.empty()) {
-    r.message = "Config: [io].input_dir is required";
-    return r;
-  }
-  if (c.output_dir.empty()) {
-    r.message = "Config: [io].output_dir is required";
-    return r;
-  }
-
-  if (c.inject_probe) {
-    std::error_code ec;
-    if (!std::filesystem::exists(c.inject_header, ec)) {
-      r.message =
-          "Config: injection header not found: " + c.inject_header.string() +
-          " (set [inject].header, or [inject].enabled = false)";
-      return r;
-    }
-    if (c.exe_path_probe == c.exe_path) {
-      r.message = "Config: [compiler].output_probe must differ from "
-                  "[compiler].output - the probe build injects a header that "
-                  "cg_b must not see";
-      return r;
-    }
-  } else {
+  if (!c.inject_probe)
     c.exe_path_probe = c.exe_path;
-  }
 
   r.success = true;
   r.message = "OK";

@@ -77,6 +77,14 @@ int main(int argc, char **argv) {
 
   const AppConfig &cfg = cfg_res.config;
 
+  if (cfg.input_dir.empty() || cfg.output_dir.empty()) {
+    std::cerr << color::err(
+                     "[clean] [io].input_dir and [io].output_dir are both "
+                     "needed: they are what gets emptied")
+              << "\n";
+    return 2;
+  }
+
   if (!clean_one(cfg.input_dir, ".in"))
     return 1;
   if (!clean_one(cfg.output_dir, ""))

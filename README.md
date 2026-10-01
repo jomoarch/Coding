@@ -33,7 +33,7 @@ cmake --build build --config Release
 
 | 键 | 用途 | 缺省 |
 | --- | --- | --- |
-| `[compiler].output` | `cg_b` 用 | 必填 |
+| `[compiler].output` | `cg_b` 用 | 必须自己指定 |
 | `[compiler].output_probe` | `cg_s` / `cg_i` 用 | 由 `output` 派生：`test/bin/solution.exe` → `test/bin/solution.probe.exe` |
 
 两者都会做各自的“是否过期”判断、按需编译：`cg_b` 只编原版，`cg_s` / `cg_i` 只编注
@@ -151,28 +151,28 @@ cg_b --help
 
 复制 `config.example.toml` 为 `config.toml` 再改。相对路径按**配置文件所在目录**解析。
 
-| 键 | 必填 | 说明 |
+**所有键都是可选的。** 加载只负责读文件、填默认值；每个工具自己去检查它实际需要的字段，
+所以只服务某一个工具的配置文件（比如只写一个 `[io].result_root` 的 `view_s` 配置）完全可用，
+不会因为缺了别的键而整体加载失败。
+
+| 键 | 谁需要 | 说明 |
 | --- | --- | --- |
-| `[compiler].source` | ✔ | 源文件 |
-| `[compiler].output` | ✔ | `cg_b` 用的原版可执行文件输出路径 |
-| `[compiler].output_probe` | | `cg_s` / `cg_i` 用的注入版输出路径；缺省由 `output` 派生，必须与 `output` 不同 |
-| `[compiler].args` | | 完整编译命令；源码与 `-o <output>` 会自动追加。默认 `g++ -std=c++17` |
-| `[inject].enabled` | | 是否给 `cg_s` / `cg_i` 注入 `probe.h`（默认 `true`）|
-| `[inject].header` | | 要注入的头文件；缺省按配置文件目录找 `include/inject/probe.h`，找不到就按 `cg_*.exe` 所在目录找 |
-| `[runner].work_dir` | ✔ | 运行目录 |
-| `[runner].time_limit_ms` | | CPU 时间上限 |
-| `[runner].memory_limit_mb` | | 内存上限 |
-| `[io].input_dir` | ✔ | 存放 `*.in` 的目录（`-s` / `-i` 模式也要求填写） |
-| `[io].single_input` | | `cg_s` 的输入文件 |
-| `[io].output_dir` | ✔ | 存放 `*.out` 的目录 |
-| `[io].single_output` | | `cg_s` / `cg_i` 询问保存时的目标文件 |
-| `[io].answer_dir` | | `cmp_b` 按测试点名取期望答案的目录，用 `<name>.ans` 或 `<name>.out`（都在时用 `.ans`）；只影响比较 |
-| `[io].single_answer` | | `cg_s` 要比对的期望答案；只影响比较，编译与运行不需要它 |
-| `[io].result_root` | | 比较结果仓库：`<root>/single` 存单次比较，`<root>/batch` 存批量 run |
-| `[io].single_name` | | `cmp_s` 存档时用的名字；缺省取 `[io].single_input` 的文件名 |
-| `[io].colorize_output` | | `cg_s` / `cg_i` 是否给程序自身输出染色（默认 `true`）|
-| `[compare].level` | | 反馈细度：`"text"` 只看是否匹配、`"line"` 另给未匹配行数与行序列、`"token"` 再给行内不同的 token（默认 `"line"`）|
-| `[compare].list_unmatched` | | 是否列出未匹配的行（默认 `false`；`level = "text"` 时静默忽略）|
-| `[compare].max_lines` | | 列出多少条未匹配行，`0` 为不限（默认 `0`；只影响列出的条数，不影响总数）|
-| `[compare].token_diff` | | 是否给出每行不同的 token（默认 `false`；非 `level = "token"` 时静默忽略）|
-| `[thread].thread_max` | | 并发测试点数，同时受 CPU 核心数限制 |
+| `[compiler].source` | `cg_b` `cg_s` `cg_i` | 源文件 |
+| `[compiler].output` | `cg_b`（关掉注入时 `cg_s` / `cg_i` 也用） | 原版可执行文件输出路径 |
+| `[compiler].output_probe` | `cg_s` / `cg_i` | 注入版输出路径；缺省由 `output` 派生，必须与 `output` 不同 |
+| `[compiler].args` | `cg_*` | 完整编译命令；源码与 `-o <output>` 会自动追加。默认 `g++ -std=c++17` |
+| `[inject].enabled` | `cg_s` / `cg_i` | 是否注入 `probe.h`（默认 `true`）；关掉就不需要头文件 |
+| `[inject].header` | `cg_s` / `cg_i` | 要注入的头文件；缺省按配置文件目录找 `include/inject/probe.h`，找不到就按 `cg_*.exe` 所在目录找 |
+| `[runner].work_dir` | `cg_b` `cg_s` `cg_i` | 运行目录 |
+| `[runner].time_limit_ms` | `cg_*` | CPU 时间上限 |
+| `[runner].memory_limit_mb` | `cg_*` | 内存上限 |
+| `[io].input_dir` | `cg_b` `cmp_b` `clean_dir` | 存放 `*.in` 的目录 |
+| `[io].output_dir` | `cg_b` `cmp_b` `clean_dir` | 存放 `*.out` 的目录 |
+| `[io].single_input` | `cg_s` | `cg_s` 的输入文件 |
+| `[io].single_output` | `cg_s` / `cg_i` | 询问保存时的目标文件 |
+| `[io].answer_dir` | `cmp_b` | 按测试点名取期望答案的目录，用 `<name>.ans` 或 `<name>.out`（都在时用 `.ans`）；只影响比较 |
+| `[io].single_answer` | `cmp_s` | 要比对的期望答案；只影响比较，编译与运行不需要它 |
+| `[io].result_root` | `cmp_s` `cmp_b` `view_s` `view_b` | 比较结果仓库：`<root>/single` 存单次比较，`<root>/batch` 存批量 run |
+| `[io].single_name` | `cmp_s` | 存档时用的名字；缺省取 `[io].single_input` 的文件名 |
+| `[io].colorize_output` | `cg_s` / `cg_i` | 是否给程序自身输出染色（默认 `true`）|
+| `[thread].thread_max` | `cg_b` | 并发测试点数，同时受 CPU 核心数限制 |

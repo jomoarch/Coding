@@ -54,6 +54,18 @@ int main(int argc, char **argv) {
   }
   const AppConfig &cfg = cfg_res.config;
 
+  if (cfg.input_dir.empty()) {
+    std::cerr << color::err("[compare] [io].input_dir is required: it holds "
+                            "the test cases to compare (<name>.in)")
+              << "\n";
+    return 2;
+  }
+  if (cfg.output_dir.empty()) {
+    std::cerr << color::err("[compare] [io].output_dir is required: it holds "
+                            "the outputs to compare (<name>.out)")
+              << "\n";
+    return 2;
+  }
   if (cfg.answer_dir.empty()) {
     std::cerr << color::err("[compare] [io].answer_dir is required: it holds "
                             "the expected answers, one <name>.ans or "

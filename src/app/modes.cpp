@@ -31,6 +31,57 @@ bool uses_probe_build(const AppConfig &cfg) {
   return cfg.inject_probe && !cfg.inject_header.empty();
 }
 
+bool need_compiler_inputs(const AppConfig &cfg, std::string &error) {
+  if (cfg.source_path.empty()) {
+    error = "[compiler].source is not set";
+    return false;
+  }
+  if (cfg.exe_path.empty()) {
+    error = "[compiler].output is not set";
+    return false;
+  }
+  if (cfg.work_dir.empty()) {
+    error = "[runner].work_dir is not set";
+    return false;
+  }
+  return true;
+}
+
+bool need_probe_header(const AppConfig &cfg, std::string &error) {
+  if (!uses_probe_build(cfg))
+    return true;
+
+  std::error_code ec;
+  if (!std::filesystem::exists(cfg.inject_header, ec)) {
+    error = "injection header not found: " + cfg.inject_header.string() +
+            " (set [inject].header, or [inject].enabled = false)";
+    return false;
+  }
+  if (cfg.exe_path_probe == cfg.exe_path) {
+    error = "[compiler].output_probe must differ from [compiler].output - the "
+            "probe build injects a header that cg_b must not see";
+    return false;
+  }
+  return true;
+}
+
+bool need_dirs(const AppConfig &cfg, std::string &error) {
+  if (cfg.input_dir.empty()) {
+    error = "[io].input_dir is not set";
+    return false;
+  }
+  if (cfg.output_dir.empty()) {
+    error = "[io].output_dir is not set";
+    return false;
+  }
+  return true;
+}
+
+int report_missing(const std::string &error) {
+  std::cerr << color::err("[config] ", error) << "\n";
+  return 2;
+}
+
 BuildResult build_step(const AppConfig &cfg, BuildTarget target) {
   BuildOption opt;
   opt.source_path = cfg.source_path;
@@ -125,6 +176,10 @@ int finish_single(const AppConfig &cfg, const SingleRunResult &run) {
 } // namespace
 
 int run_interactive(const AppConfig &cfg) {
+  std::string missing;
+  if (!need_compiler_inputs(cfg, missing) || !need_probe_header(cfg, missing))
+    return report_missing(missing);
+
   const BuildResult built = build_step(cfg, BuildTarget::Probe);
   if (!built)
     return 2;
@@ -144,6 +199,10 @@ int run_interactive(const AppConfig &cfg) {
 }
 
 int run_single_file(const AppConfig &cfg) {
+  std::string missing;
+  if (!need_compiler_inputs(cfg, missing) || !need_probe_header(cfg, missing))
+    return report_missing(missing);
+
   if (cfg.single_input.empty()) {
     std::cerr << color::err("[io] [io].single_input is required in -s mode")
               << "\n";
@@ -183,6 +242,10 @@ int run_single_file(const AppConfig &cfg) {
 }
 
 int run_batch(const AppConfig &cfg) {
+  std::string missing;
+  if (!need_compiler_inputs(cfg, missing) || !need_dirs(cfg, missing))
+    return report_missing(missing);
+
   std::cout << "Config: " << cfg.config_path.string() << "\n"
             << "  source    : " << cfg.source_path.string() << "\n"
             << "  exe       : " << cfg.exe_path.string() << "\n"

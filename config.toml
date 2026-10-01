@@ -1,8 +1,12 @@
+# Every key here is optional. Loading only reads the file and fills in defaults;
+# each tool then checks the fields it actually needs, so a config that serves
+# just one of them is fine.
+
 [compiler]
-# Required. The solution to compile.
+# Used by cg_b / cg_s / cg_i. The solution to compile.
 source = "test/src/solution.cpp"
-# Required. Where the plain executable is written; used by cg_b. Nothing is
-# injected into this build.
+# Used by cg_b (and by cg_s / cg_i when injection is off). Where the plain
+# executable is written; nothing is injected into this build.
 output = "test/bin/solution.exe"
 # Optional. Where the probe executable is written; used by cg_s / cg_i. These
 # two modes need a second binary because include/inject/probe.h is forced into
@@ -27,8 +31,8 @@ enabled = true
 # header = "include/inject/probe.h"
 
 [runner]
-# Required. Working directory for every run; each test case also gets its own
-# subdirectory (t0, t1, ...) underneath it.
+# Used by cg_b / cg_s / cg_i. Working directory for every run; each test case
+# also gets its own subdirectory (t0, t1, ...) underneath it.
 work_dir = "test/work"
 # Strongly recommended. Without it a runaway program is never killed.
 time_limit_ms = 1000
@@ -36,9 +40,11 @@ time_limit_ms = 1000
 memory_limit_mb = 256
 
 [io]
-# Required, even in -s / -i mode. Directory holding the *.in test cases.
+# Used by cg_b (and by cmp_b / clean_dir). Directory holding the *.in test
+# cases.
 input_dir = "test/in"
-# Required. Directory receiving the produced *.out files.
+# Used by cg_b (and by cmp_b / clean_dir). Directory receiving the produced
+# *.out files.
 #
 # NOTE: every existing entry in this directory is deleted recursively before a
 # batch run, so never point this at a directory holding expected answers.
