@@ -5,12 +5,15 @@
 #include "compare/compare.hpp"
 
 #include <filesystem>
+#include <string>
 
 struct SaveResult : ResultBase {};
 
 struct LoadResult : ResultBase {
   CompareResult result;
 };
+
+[[nodiscard]] std::string serialize_compare_result(const CompareResult &result);
 
 [[nodiscard]] SaveResult save_compare_result(const CompareResult &result,
                                              const std::filesystem::path &path);

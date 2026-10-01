@@ -110,10 +110,7 @@ std::string reject(const std::filesystem::path &path, const std::string &why) {
 
 } // namespace
 
-SaveResult save_compare_result(const CompareResult &result,
-                               const std::filesystem::path &path) {
-  SaveResult out;
-
+std::string serialize_compare_result(const CompareResult &result) {
   std::string payload;
   payload.reserve(96 + result.unmatched_lines.size() * 64);
 
@@ -150,8 +147,15 @@ SaveResult save_compare_result(const CompareResult &result,
   put_u64(file, payload.size());
   put_u64(file, XXH3_64bits(payload.data(), payload.size()));
   file.append(payload);
+  return file;
+}
 
-  const file::WriteResult written = file::write_all(path, file);
+SaveResult save_compare_result(const CompareResult &result,
+                               const std::filesystem::path &path) {
+  SaveResult out;
+
+  const file::WriteResult written =
+      file::write_all(path, serialize_compare_result(result));
   if (!written) {
     out.message = written.message;
     return out;

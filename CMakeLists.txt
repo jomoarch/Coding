@@ -15,6 +15,7 @@ set(BASE_SOURCES
   src/base/win_error.cpp
   src/base/cleaner.cpp
   src/base/file.cpp
+  src/base/hash.cpp
   src/base/terminal.cpp
 )
 
@@ -41,8 +42,13 @@ set(APP_SOURCES
 )
 
 set(COMPARE_SOURCES
-  src/compare/compare.cpp
+  src/compare/case.cpp
   src/compare/serialize.cpp
+  src/compare/compare.cpp
+)
+
+set(STORE_SOURCES
+  src/store/store.cpp
 )
 
 set(THIRD_PARTY_SOURCES
@@ -62,10 +68,11 @@ add_library(coding_common STATIC
   ${IO_SOURCES}
   ${PROCESS_SOURCES}
   ${COMPARE_SOURCES}
+  ${STORE_SOURCES}
   ${APP_SOURCES}
 )
 
-target_link_libraries(coding_common PUBLIC coding_third_party)
+target_link_libraries(coding_common PUBLIC coding_third_party bcrypt)
 
 target_include_directories(coding_common PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include

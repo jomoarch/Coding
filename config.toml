@@ -50,13 +50,13 @@ single_output = "test/output"
 # Optional. Expected answer compared against [io].single_output. Not needed to
 # compile or run; a missing value only fails once a comparison is attempted.
 # single_answer = "test/exc/solution.out"
-# Optional. Where cmp_s offers to save the comparison result once the preview is
-# over, and what view_s renders. Not needed to compile or run.
-# single_result = "test/result.cmp"
-# Optional. Where cmp_b offers to save every result once browsing is over, one
-# <name>.cmp per test case, and what view_b browses. Not needed to compile or
-# run.
-# result_dir = "test/res"
+# Optional. The archive of comparisons. cmp_s / view_s use <root>/single (one
+# folder per comparison, named after the SHA-256 of what is inside), cmp_b /
+# view_b use <root>/batch (one folder per run). Not needed to compile or run.
+# result_root = "test/results"
+# Optional. Name to file a single comparison under; defaults to the file name of
+# [io].single_input.
+# single_name = "frog1"
 # Optional. Directory holding the expected answers for a batch comparison,
 # matched to each test case by name. Either <name>.ans or <name>.out is used,
 # and .ans wins when both exist; the program's own output is always <name>.out.

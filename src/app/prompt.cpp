@@ -29,6 +29,33 @@ bool parse(int argc, char **argv, Options &out, std::string &error) {
       out.pause = 0;
       continue;
     }
+    if (arg == "--list") {
+      out.list = true;
+      continue;
+    }
+    if (arg == "--prune") {
+      out.prune = true;
+      continue;
+    }
+    if (arg == "--id" || arg == "--run" || arg == "--keep") {
+      if (i + 1 >= argc) {
+        error = "missing value for " + arg;
+        return false;
+      }
+      const std::string value = argv[++i];
+      if (arg == "--keep") {
+        try {
+          out.keep = static_cast<std::size_t>(std::stoull(value));
+        } catch (...) {
+          error = "--keep needs a number, not '" + value + "'";
+          return false;
+        }
+        out.keep_given = true;
+      } else {
+        out.id = value;
+      }
+      continue;
+    }
     if (arg == "-c" || arg == "--config") {
       if (i + 1 >= argc) {
         error = "missing value for " + arg;
@@ -52,7 +79,8 @@ bool parse(int argc, char **argv, Options &out, std::string &error) {
   return true;
 }
 
-void print_usage(const char *binary, const char *summary) {
+void print_usage(const char *binary, const char *summary,
+                 const char *extra_options) {
   std::cout << binary << " - " << summary << "\n\n"
             << "Usage: " << binary << " [options] [config.toml]\n\n"
             << "Options:\n"
@@ -60,8 +88,10 @@ void print_usage(const char *binary, const char *summary) {
                "config.toml)\n"
             << "      --pause          always wait for a key press before "
                "exiting\n"
-            << "      --no-pause       never wait for a key press\n"
-            << "  -h, --help           show this help\n";
+            << "      --no-pause       never wait for a key press\n";
+  if (extra_options != nullptr)
+    std::cout << extra_options;
+  std::cout << "  -h, --help           show this help\n";
 }
 
 bool should_pause(int pause) noexcept {
@@ -78,6 +108,23 @@ void pause_if_needed(int pause) {
     return;
   std::cout << "\nPress any key to exit ..." << std::flush;
   _getch();
+}
+
+bool ask_yes_no(std::string_view question) {
+  HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+  DWORD mode = 0;
+  if (hIn != nullptr && hIn != INVALID_HANDLE_VALUE &&
+      GetConsoleMode(hIn, &mode))
+    FlushConsoleInputBuffer(hIn);
+
+  std::cout << question << " [y/N] " << std::flush;
+
+  std::string line;
+  if (!std::getline(std::cin, line))
+    return false;
+
+  const std::string answer = text::to_lower(text::trim(line));
+  return answer == "y" || answer == "yes";
 }
 
 bool ask_save(const std::filesystem::path &target, std::string_view what) {

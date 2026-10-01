@@ -2,7 +2,7 @@
 #include "app/viewer.hpp"
 #include "base/color.hpp"
 #include "compare/compare.hpp"
-#include "compare/serialize.hpp"
+#include "store/store.hpp"
 #include "io/config.hpp"
 #include "io/iofile.hpp"
 
@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
     return 2;
   }
 
-  std::vector<viewer::Case> cases;
+  std::vector<Case> cases;
   cases.reserve(pairs.pairs.size());
 
   std::size_t matched = 0;
@@ -82,13 +82,13 @@ int main(int argc, char **argv) {
   std::size_t missing = 0;
 
   for (const ComparePair &pair : pairs.pairs) {
-    viewer::Case item;
+    Case item;
     item.name = pair.name;
 
     if (!file_exists(pair.output_path)) {
-      item.state = viewer::CaseState::NoOutput;
+      item.state = CaseState::NoOutput;
     } else if (pair.expect_path.empty()) {
-      item.state = viewer::CaseState::NoAnswer;
+      item.state = CaseState::NoAnswer;
     } else {
       CompareOption opts;
       opts.output_path = pair.output_path;
@@ -96,20 +96,20 @@ int main(int argc, char **argv) {
       item.result = compare_output(opts);
 
       if (!item.result.success) {
-        item.state = viewer::CaseState::Failed;
+        item.state = CaseState::Failed;
         item.note = item.result.message;
       } else if (item.result.exact_match) {
-        item.state = viewer::CaseState::Identical;
+        item.state = CaseState::Identical;
       } else {
-        item.state = viewer::CaseState::Differ;
+        item.state = CaseState::Differ;
       }
     }
 
     switch (item.state) {
-    case viewer::CaseState::Identical:
+    case CaseState::Identical:
       ++matched;
       break;
-    case viewer::CaseState::Differ:
+    case CaseState::Differ:
       ++differ;
       break;
     default:
@@ -126,17 +126,16 @@ int main(int argc, char **argv) {
     std::cout << color::info(", ", missing, " without a result");
   std::cout << "\n";
 
-  for (const viewer::Case &item : cases) {
-    if (item.state == viewer::CaseState::NoOutput ||
-        item.state == viewer::CaseState::NoAnswer)
+  for (const Case &item : cases) {
+    if (item.state == CaseState::NoOutput || item.state == CaseState::NoAnswer)
       std::cout << "[compare] " << item.name << ": "
-                << (item.state == viewer::CaseState::NoOutput
+                << (item.state == CaseState::NoOutput
                         ? "no output file, run cg_b first"
                         : "no answer file in " + cfg.answer_dir.string() +
                               " (tried " + item.name + ".ans and " + item.name +
                               ".out)")
                 << "\n";
-    else if (item.state == viewer::CaseState::Failed)
+    else if (item.state == CaseState::Failed)
       std::cout << color::warn("[compare] ", item.name, ": ", item.note)
                 << "\n";
   }
@@ -145,37 +144,35 @@ int main(int argc, char **argv) {
   if (viewer::view_batch(cases) != 0)
     code = 2;
 
-  if (cfg.result_dir.empty()) {
-    std::cout << "[save] [io].result_dir is not configured, nothing saved\n";
-  } else if (prompt::ask_save(cfg.result_dir, "results")) {
-    std::error_code ec;
-    std::filesystem::create_directories(cfg.result_dir, ec);
-
-    std::size_t saved = 0;
-    std::size_t failed = 0;
-    for (const viewer::Case &item : cases) {
-      if (!viewer::case_browsable(item))
-        continue;
-
-      const SaveResult written = save_compare_result(
-          item.result, cfg.result_dir / (item.name + ".cmp"));
-      if (!written) {
-        std::cerr << color::err("[save] ", item.name, ": ", written.message)
-                  << "\n";
-        ++failed;
-      } else {
-        ++saved;
+  if (cfg.result_root.empty()) {
+    std::cout
+        << "[save] [io].result_root is not configured, nothing archived\n";
+  } else if (prompt::ask_yes_no("[save] Archive this run in " +
+                                (cfg.result_root / "batch").string() + " ?")) {
+    store::BatchRequest request;
+    request.items.reserve(cases.size());
+    for (std::size_t i = 0; i < cases.size(); ++i) {
+      store::BatchItem entry;
+      entry.item = std::move(cases[i]);
+      if (viewer::case_browsable(entry.item)) {
+        entry.output_path = pairs.pairs[i].output_path;
+        entry.answer_path = pairs.pairs[i].expect_path;
       }
+      request.items.push_back(std::move(entry));
     }
 
-    std::cout << color::ok("[save] saved ", saved, " result(s) -> ",
-                           cfg.result_dir);
-    if (failed != 0)
-      std::cout << color::err(" (", failed, " failed)");
-    std::cout << "\n";
-
-    if (failed != 0)
+    const store::BatchSaveOutcome saved =
+        store::save_batch(cfg.result_root, request);
+    if (!saved) {
+      std::cerr << color::err("[save] ", saved.message) << "\n";
       code = 2;
+    } else {
+      std::cout << color::ok("[save] ",
+                             saved.reused ? "already archived, time refreshed: "
+                                          : "archived: ",
+                             saved.archived, " result(s) -> ", saved.id)
+                << "\n";
+    }
   }
 
   prompt::pause_if_needed(cli.pause);

@@ -67,17 +67,40 @@ stderr 都进同一个 `*.out`。
 不想注入就用 `[inject].enabled = false`：`cg_s` / `cg_i` 会退回去用原版程序加两条独
 立管道，顺序不再有保证，但编译更快。
 
-## 比较与浏览
+## 比较、存档与浏览
 
 `cmp_s`、`cmp_b`、`view_s` 和 `view_b` 是比较 / 浏览工具，与编译、运行解耦：它们不编译、不跑程序，
-只处理 `[io].single_output`、`[io].single_answer`、`[io].single_result`、`[io].result_dir` 和
-`[io].answer_dir` 这些文件。**注意 `cmp_b` 不会碰 `[io].output_dir`**：它不清理、也不创建空的
-`.out`，只读取里面已经跑出来的结果。
+只处理 `[io].single_output`、`[io].single_answer`、`[io].answer_dir` 和 `[io].result_root`。
+**注意 `cmp_b` 不会碰 `[io].output_dir`**：它不清理、也不创建空的 `.out`，只读取里面已经跑出来的结果。
+
+### 存档
+
+`[io].result_root` 是**比较结果仓库**，分成两个互不相干的库：
+
+```
+<result_root>/single/index.tsv      映射：名字 + 时间 -> 文件夹
+<result_root>/single/<id>/          一次比较：result.cmp + output.txt + answer.txt + meta.txt
+<result_root>/batch/index.tsv       映射：时间 -> run 文件夹
+<result_root>/batch/<run-id>/       manifest.tsv + 每个用例一个文件夹
+```
+
+- **文件夹名就是里面内容的 SHA-256**（取前 16 位十六进制，覆盖 `result.cmp`、`output.txt`、
+  `answer.txt`，`meta.txt` 不参与）。所以同样的内容只会有一个文件夹。
+- **去重只刷新时间**：内容一样时不开新文件夹、也不改已经记下的名字与统计，只把索引里的时间挪到最新。
+- 索引是"历史"，文件夹是"内容"；索引每行一次保存事件，最新的一行排在最前面（`--list` 与"最新"都靠它，
+  不依赖时钟精度或时区）。
+- 写入顺序是"先把文件夹写完再改索引"，中途崩掉最多留一个 `.tmp-*` 垃圾目录，不会出现指向空文件夹的
+  记录；索引里有读不懂的行会被跳过并告警，不会让整份历史打不开。
+- 存档存的是**比较器规范化之后**的字节（和 `result.cmp` 一致），这样以后重看、重算都对得上。
+
+### 四个工具
 
 - **`cmp_s`** 比较 `[io].single_output` 与 `[io].single_answer`，然后进入全屏预览：顶部是匹配状态与
   两侧行数，下面是未匹配行的行号列表（两个数字都右对齐），每行前面还有一个类型标记：
   `!` token 不同、`~` 只有行内空白不同、`+` 只在 output 里、`-` 只在 expect 里。
-  预览结束后会询问是否把结果存到 `[io].single_result`，行为与 `cg_s` / `cg_i` 保存输出一致。
+  预览结束后询问是否**存档**这次比较，名字默认取 `[io].single_input` 的文件名（可用 `[io].single_name`
+  覆盖）；`--no-save` 可以直接跳过询问。
+- **`view_s`** 只读仓库，打开**最新那次**比较（`--id <id>` 打开指定的那次，`--list` 列出历史）。
 - **`cmp_b`** 把 `[io].input_dir` 里的每个用例（`<name>.in`）的 `[io].output_dir/<name>.out` 与
   `[io].answer_dir` 里的期望答案比一遍——答案是 `<name>.ans` 或 `<name>.out`，两个都在时用 `.ans`；
   程序自己的输出永远只认 `<name>.out`。用例顺序与 `cg_b` 一致（自然排序，`a2` 在 `a10` 前面），
@@ -88,18 +111,19 @@ stderr 都进同一个 `*.out`。
     光标所在的用例，`Backspace` 退回列表（光标回到刚进的那个用例），`q` / `Esc` **全局退出**。
   - 状态是 `matched` / `differ` / `no output` / `no answer` / `failed`。只有前两种能进去看；
     缺文件或比较失败的用例会在进列表前用普通文本说明原因。
-  - 退出后询问是否把每个用例的结果存成 `[io].result_dir/<name>.cmp`（没有比较过的用例没有文件）。
-- **`view_s`** 只读取 `[io].single_result` 渲染，不进行比较；适合先把结果存下来、之后反复打开。
-- **`view_b`** 只读取 `[io].result_dir` 里的 `<name>.cmp` 进上面那套批量浏览器，不进行比较。列表
-  顺序和批量跑的时候一致（自然排序），读不出来的结果文件会标成 `unreadable`，进列表前用普通文本
-  说明原因。
+  - 退出后询问是否把**整个 run** 存档。没比较过的用例也会写进 `manifest.tsv`（只有状态、没有文件），
+    所以以后打开这份存档，看到的列表和刚才浏览的完全一样。
+- **`view_b`** 只读仓库，打开**最新那个 run**（`--run <id>` 指定，`--list` 列出历史）。
 
 用例内部的按键：`j` / `k`（或方向键）移动光标，`Enter` / `→` 展开或跳到下一个不同的 token，
 `Shift+Enter` / `←` 回到上一个 token 或收回，`c` 收回当前，`r` 全部收回，`Ctrl+j` / `Ctrl+k` 只滚动
 视野，`Backspace` 退回用例列表，`q` / `Esc` 全局退出。
 
-四个工具都支持 `[options] [config.toml]`，选项为 `-c/--config`、`--pause`、`--no-pause`、`-h/--help`；
-退出码 `0` 一致、`1` 不一致、`2` 配置或 IO 出错。
+### 公共选项
+
+四个工具都支持 `[options] [config.toml]`：`-c/--config`、`--pause`、`--no-pause`、`-h/--help`；
+`view_s` / `view_b` 另有 `--list`、`--id` / `--run <id>`、`--prune --keep <n>`（手工清理，会先列出
+要删的东西再问一次，永远不会自动删）。退出码 `0` 一致、`1` 不一致、`2` 配置或 IO 出错。
 
 ## 用法
 
@@ -144,8 +168,8 @@ cg_b --help
 | `[io].single_output` | | `cg_s` / `cg_i` 询问保存时的目标文件 |
 | `[io].answer_dir` | | `cmp_b` 按测试点名取期望答案的目录，用 `<name>.ans` 或 `<name>.out`（都在时用 `.ans`）；只影响比较 |
 | `[io].single_answer` | | `cg_s` 要比对的期望答案；只影响比较，编译与运行不需要它 |
-| `[io].single_result` | | `cmp_s` 预览结束后询问保存的比较结果路径，也是 `view_s` 读取的路径 |
-| `[io].result_dir` | | `cmp_b` 浏览结束后询问保存结果的目录，每个用例一个 `<name>.cmp` |
+| `[io].result_root` | | 比较结果仓库：`<root>/single` 存单次比较，`<root>/batch` 存批量 run |
+| `[io].single_name` | | `cmp_s` 存档时用的名字；缺省取 `[io].single_input` 的文件名 |
 | `[io].colorize_output` | | `cg_s` / `cg_i` 是否给程序自身输出染色（默认 `true`）|
 | `[compare].level` | | 反馈细度：`"text"` 只看是否匹配、`"line"` 另给未匹配行数与行序列、`"token"` 再给行内不同的 token（默认 `"line"`）|
 | `[compare].list_unmatched` | | 是否列出未匹配的行（默认 `false`；`level = "text"` 时静默忽略）|

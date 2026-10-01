@@ -2,6 +2,7 @@
 #define VIEWER_HPP
 
 #include "base/terminal.hpp"
+#include "compare/case.hpp"
 #include "compare/compare.hpp"
 
 #include <cstddef>
@@ -42,22 +43,6 @@ std::string render(const CompareResult &result, const State &state,
                    std::size_t height, std::string_view title = {});
 
 int view(const CompareResult &result);
-
-enum class CaseState {
-  Identical,
-  Differ,
-  NoOutput,
-  NoAnswer,
-  Unreadable,
-  Failed
-};
-
-struct Case {
-  std::string name;
-  CaseState state{CaseState::Failed};
-  CompareResult result;
-  std::string note;
-};
 
 struct BatchState {
   std::size_t width{0};
