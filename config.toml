@@ -50,6 +50,9 @@ single_output = "test/output"
 # Optional. Expected answer compared against [io].single_output. Not needed to
 # compile or run; a missing value only fails once a comparison is attempted.
 # single_answer = "test/exc/solution.out"
+# Optional. Where cmp_s offers to save the comparison result once the preview is
+# over, and what view_s renders. Not needed to compile or run.
+# single_result = "test/result.cmp"
 # Optional. Directory holding the expected answers for a batch run, matched to
 # each test case by name (<name>.out). Not needed to compile or run; a missing
 # value only fails once a comparison is attempted.

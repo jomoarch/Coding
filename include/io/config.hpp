@@ -35,6 +35,7 @@ struct AppConfig {
   std::filesystem::path single_output;
   std::filesystem::path answer_dir;
   std::filesystem::path single_answer;
+  std::filesystem::path single_result;
   bool colorize_output{true};
 
   // thread

@@ -2,6 +2,7 @@
 
 #include "app/builder.hpp"
 #include "app/formatter.hpp"
+#include "app/prompt.hpp"
 #include "io/iofile.hpp"
 #include "process/runner_batch.hpp"
 #include "process/runner_single.hpp"
@@ -58,10 +59,6 @@ void print_build_line(const std::filesystem::path &exe, const BuildResult &s) {
     std::cout << "[build] up-to-date (" << exe.filename().string() << ")\n";
 }
 
-std::string trim_lower(std::string_view s) {
-  return text::to_lower(text::trim(s));
-}
-
 bool write_text(const fs::path &path, const std::string &text) {
   std::error_code ec;
   if (!path.parent_path().empty())
@@ -72,30 +69,6 @@ bool write_text(const fs::path &path, const std::string &text) {
     return false;
   f.write(text.data(), static_cast<std::streamsize>(text.size()));
   return f.good();
-}
-
-bool ask_save(const fs::path &target) {
-  HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
-  DWORD mode = 0;
-  if (hIn != nullptr && hIn != INVALID_HANDLE_VALUE &&
-      GetConsoleMode(hIn, &mode))
-    FlushConsoleInputBuffer(hIn);
-
-  std::cout << "[save] Save output to " << target.string() << " ? [y/N] "
-            << std::flush;
-
-  std::string line;
-  if (!std::getline(std::cin, line)) {
-    std::cout << "\n" << color::info("[save] skipped (stdin closed)") << "\n";
-    return false;
-  }
-
-  const std::string ans = trim_lower(line);
-  if (ans != "y" && ans != "yes") {
-    std::cout << color::info("[save] skipped") << "\n";
-    return false;
-  }
-  return true;
 }
 
 inline std::string bg(std::string_view s) {
@@ -134,7 +107,7 @@ int finish_single(const AppConfig &cfg, const SingleRunResult &run) {
 
   if (cfg.single_output.empty()) {
     std::cout << "[save] [io].single_output is not configured, nothing saved\n";
-  } else if (ask_save(cfg.single_output)) {
+  } else if (prompt::ask_save(cfg.single_output, "output")) {
     if (write_text(cfg.single_output, run.captured)) {
       std::cout << color::ok("[save] saved ", run.captured.size(),
                              " byte(s) -> ", cfg.single_output)

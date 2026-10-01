@@ -3,11 +3,10 @@
 #include "base/color.hpp"
 #include "io/config.hpp"
 #include "app/modes.hpp"
+#include "app/prompt.hpp"
 #include "base/text.hpp"
 
 #include <windows.h>
-
-#include <conio.h>
 
 #include <iostream>
 #include <string>
@@ -85,15 +84,6 @@ bool parse_args(int argc, char **argv, CliOptions &cli, std::string &error) {
   return true;
 }
 
-bool should_pause(const CliOptions &cli) {
-  if (cli.pause >= 0)
-    return cli.pause != 0;
-
-  DWORD list[4] = {};
-  const DWORD count = GetConsoleProcessList(list, 4);
-  return count <= 1;
-}
-
 void use_utf8_console() noexcept { SetConsoleOutputCP(CP_UTF8); }
 
 int dispatch(Mode mode, const AppConfig &cfg) {
@@ -160,10 +150,7 @@ int run(Mode mode, int argc, char **argv) {
 
   const int code = dispatch(mode, cfg_res.config);
 
-  if (should_pause(cli)) {
-    std::cout << "\nPress any key to exit ..." << std::flush;
-    _getch();
-  }
+  prompt::pause_if_needed(cli.pause);
   return code;
 }
 
