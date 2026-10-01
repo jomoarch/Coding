@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
-project(Coding LANGUAGES CXX)
+project(Coding LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -36,12 +36,31 @@ set(APP_SOURCES
   src/app/modes.cpp
 )
 
+set(COMPARE_SOURCES
+  src/compare/compare.cpp
+)
+
+set(THIRD_PARTY_SOURCES
+  src/third_party/xxhash.c
+)
+
+add_library(coding_third_party STATIC
+  ${THIRD_PARTY_SOURCES}
+)
+
+target_include_directories(coding_third_party PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/third_party
+)
+
 add_library(coding_common STATIC
   ${BASE_SOURCES}
   ${IO_SOURCES}
   ${PROCESS_SOURCES}
+  ${COMPARE_SOURCES}
   ${APP_SOURCES}
 )
+
+target_link_libraries(coding_common PUBLIC coding_third_party)
 
 target_include_directories(coding_common PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include
