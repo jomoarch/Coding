@@ -14,6 +14,7 @@ set(BASE_SOURCES
   src/base/color.cpp
   src/base/win_error.cpp
   src/base/cleaner.cpp
+  src/base/file.cpp
 )
 
 set(IO_SOURCES

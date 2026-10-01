@@ -1,7 +1,6 @@
 #include "compare/compare.hpp"
 
-#include "base/handle.hpp"
-#include "base/win_error.hpp"
+#include "base/file.hpp"
 
 #include "xxhash.h"
 
@@ -22,24 +21,6 @@
 #endif
 
 namespace {
-
-constexpr FeedbackLevel kLevels[] = {FeedbackLevel::Text, FeedbackLevel::Line,
-                                     FeedbackLevel::Token};
-
-const char *level_name(FeedbackLevel level) noexcept {
-  switch (level) {
-  case FeedbackLevel::Text:
-    return "text";
-  case FeedbackLevel::Line:
-    return "line";
-  case FeedbackLevel::Token:
-    return "token";
-  }
-  return "line";
-}
-
-constexpr std::size_t kChunkedReadThreshold = 1u << 18;
-constexpr std::size_t kReadChunk = 1u << 18;
 
 bool is_line_trailing_ws(char c) noexcept {
   return c == ' ' || c == '\t' || c == '\r';
@@ -80,94 +61,14 @@ const char *find_newline(const char *begin, const char *end) noexcept {
 }
 
 struct Compacted {
-  std::size_t removed{0};
+  std::size_t size{0};
   std::size_t line_count{0};
 };
 
-bool read_file(const std::filesystem::path &path, std::string &out,
-               std::string &error) {
-  HandleGuard h(CreateFileW(path.wstring().c_str(), GENERIC_READ,
-                            FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
-                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
-  if (!h.valid()) {
-    error = "Cannot open " + path.string() + ": " + win::last_error_string();
-    return false;
-  }
-
-  LARGE_INTEGER size{};
-  if (!GetFileSizeEx(h.get(), &size)) {
-    error = "Cannot size " + path.string() + ": " + win::last_error_string();
-    return false;
-  }
-  const std::size_t total = static_cast<std::size_t>(size.QuadPart);
-
-  out.clear();
-
-  if (total <= kChunkedReadThreshold) {
-    out.resize(total);
-    DWORD got = 0;
-    if (total != 0 && !ReadFile(h.get(), out.data(), static_cast<DWORD>(total),
-                                &got, nullptr)) {
-      error = "Cannot read " + path.string() + ": " + win::last_error_string();
-      return false;
-    }
-    out.resize(got);
-    return true;
-  }
-
-  out.reserve(total);
-  std::vector<char> scratch(kReadChunk);
-
-  std::size_t done = 0;
-  while (done < total) {
-    const DWORD want =
-        static_cast<DWORD>(std::min<std::size_t>(total - done, kReadChunk));
-    DWORD got = 0;
-    if (!ReadFile(h.get(), scratch.data(), want, &got, nullptr)) {
-      error = "Cannot read " + path.string() + ": " + win::last_error_string();
-      return false;
-    }
-    if (got == 0)
-      break;
-    out.append(scratch.data(), got);
-    done += got;
-  }
-  return true;
-}
-
-bool write_file(const std::filesystem::path &path, std::string_view data,
-                std::string &error) {
-  HandleGuard h(CreateFileW(path.wstring().c_str(), GENERIC_WRITE,
-                            FILE_SHARE_READ, nullptr, CREATE_ALWAYS,
-                            FILE_ATTRIBUTE_NORMAL, nullptr));
-  if (!h.valid()) {
-    error = "Cannot rewrite " + path.string() + ": " + win::last_error_string();
-    return false;
-  }
-
-  std::size_t done = 0;
-  while (done < data.size()) {
-    const DWORD want =
-        static_cast<DWORD>(std::min<std::size_t>(data.size() - done, 1u << 30));
-    DWORD wrote = 0;
-    if (!WriteFile(h.get(), data.data() + done, want, &wrote, nullptr) ||
-        wrote == 0) {
-      error =
-          "Cannot rewrite " + path.string() + ": " + win::last_error_string();
-      return false;
-    }
-    done += wrote;
-  }
-  return true;
-}
-
-Compacted compact(std::string &data) noexcept {
-  Compacted result;
-  const std::size_t original = data.size();
+Compacted compact(char *buf, std::size_t original) noexcept {
+  Compacted r;
   if (original == 0)
-    return result;
-
-  char *buf = data.data();
+    return r;
 
   std::size_t read = 0;
   if (original >= 3 && static_cast<unsigned char>(buf[0]) == 0xEF &&
@@ -204,10 +105,9 @@ Compacted compact(std::string &data) noexcept {
     ++stripped;
   }
 
-  data.resize(write);
-  result.removed = original - write;
-  result.line_count = write == 0 ? 0 : 1 + (newlines - stripped);
-  return result;
+  r.size = write;
+  r.line_count = write == 0 ? 0 : 1 + (newlines - stripped);
+  return r;
 }
 
 struct Token {
@@ -279,60 +179,58 @@ void fill_token_diff(const char *output_line, std::size_t output_size,
 } // namespace
 
 CompareResult compare_output(const CompareOption &opts) {
-  CompareResult result;
+  CompareResult r;
 
-  std::string error;
-  std::string output_raw;
-  if (!read_file(opts.output_path, output_raw, error)) {
-    result.message = error;
-    return result;
+  file::ReadResult output_read = file::read_all(opts.output_path);
+  if (!output_read) {
+    r.message = output_read.message;
+    return r;
   }
-  std::string expect_raw;
-  if (!read_file(opts.expect_path, expect_raw, error)) {
-    result.message = error;
-    return result;
+  file::ReadResult expect_read = file::read_all(opts.expect_path);
+  if (!expect_read) {
+    r.message = expect_read.message;
+    return r;
   }
 
-  const Compacted output_compacted = compact(output_raw);
-  const Compacted expect_compacted = compact(expect_raw);
+  file::Buffer &output_raw = output_read.data;
+  file::Buffer &expect_raw = expect_read.data;
+
+  const std::size_t output_original = output_raw.size();
+  const Compacted output_compacted =
+      compact(output_raw.data(), output_original);
+  const Compacted expect_compacted =
+      compact(expect_raw.data(), expect_raw.size());
+  output_raw.truncate(output_compacted.size);
+  expect_raw.truncate(expect_compacted.size);
 
   const std::uint64_t output_hash =
       XXH3_64bits(output_raw.data(), output_raw.size());
   const std::uint64_t expect_hash =
       XXH3_64bits(expect_raw.data(), expect_raw.size());
-  result.output_hash = output_hash;
-  result.expect_hash = expect_hash;
+  r.output_hash = output_hash;
+  r.expect_hash = expect_hash;
 
-  if (opts.normalize_in_place && output_compacted.removed != 0) {
-    std::string write_error;
-    if (!write_file(opts.output_path, output_raw, write_error))
-      result.warning = write_error;
+  if (output_compacted.size != output_original) {
+    const file::WriteResult written =
+        file::write_all(opts.output_path, output_raw.view());
+    if (!written)
+      r.warning = written.message;
   }
+
+  r.output_line_count = output_compacted.line_count;
+  r.expect_line_count = expect_compacted.line_count;
 
   const bool same_content =
       output_raw.size() == expect_raw.size() && output_hash == expect_hash &&
       std::memcmp(output_raw.data(), expect_raw.data(), output_raw.size()) == 0;
 
   if (same_content) {
-    result.success = true;
-    result.exact_match = true;
-    if (opts.level != FeedbackLevel::Text) {
-      result.count_available = true;
-      result.output_line_count = output_compacted.line_count;
-      result.expect_line_count = expect_compacted.line_count;
-    }
-    return result;
+    r.success = true;
+    r.exact_match = true;
+    return r;
   }
 
-  result.exact_match = false;
-  if (opts.level == FeedbackLevel::Text) {
-    result.success = true;
-    return result;
-  }
-
-  result.count_available = true;
-  result.output_line_count = output_compacted.line_count;
-  result.expect_line_count = expect_compacted.line_count;
+  r.exact_match = false;
 
   const char *output = output_raw.data();
   const char *output_end = output + output_raw.size();
@@ -374,25 +272,19 @@ CompareResult compare_output(const CompareOption &opts) {
     }
 
     if (unmatched) {
-      ++result.unmatched_line_count;
+      ++r.unmatched_line_count;
 
-      const bool listed = opts.list_unmatched &&
-                          (opts.max_lines == 0 ||
-                           result.unmatched_lines.size() < opts.max_lines);
-      if (listed) {
-        diff.line_no = line_no;
-        if (has_output)
-          diff.output_line.assign(output, output_len);
-        if (has_expect)
-          diff.expect_line.assign(expect, expect_len);
+      diff.line_no = line_no;
+      if (has_output)
+        diff.output_line.assign(output, output_len);
+      if (has_expect)
+        diff.expect_line.assign(expect, expect_len);
 
-        if (opts.level == FeedbackLevel::Token && opts.token_diff &&
-            diff.kind == LineKind::Differ)
-          fill_token_diff(output, output_len, expect, expect_len, output_tokens,
-                          expect_tokens, diff);
+      if (diff.kind == LineKind::Differ)
+        fill_token_diff(output, output_len, expect, expect_len, output_tokens,
+                        expect_tokens, diff);
 
-        result.unmatched_lines.push_back(std::move(diff));
-      }
+      r.unmatched_lines.push_back(std::move(diff));
     }
 
     if (has_output)
@@ -401,28 +293,6 @@ CompareResult compare_output(const CompareOption &opts) {
       expect = expect_line_end < expect_end ? expect_line_end + 1 : expect_end;
   }
 
-  result.truncated = opts.list_unmatched && result.unmatched_line_count >
-                                                result.unmatched_lines.size();
-  result.success = true;
-  return result;
-}
-
-bool parse_feedback_level(std::string_view name, FeedbackLevel &out) {
-  for (FeedbackLevel level : kLevels) {
-    if (name == level_name(level)) {
-      out = level;
-      return true;
-    }
-  }
-  return false;
-}
-
-std::string feedback_level_names() {
-  std::string names;
-  for (FeedbackLevel level : kLevels) {
-    if (!names.empty())
-      names += ", ";
-    names += level_name(level);
-  }
-  return names;
+  r.success = true;
+  return r;
 }
