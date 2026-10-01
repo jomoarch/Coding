@@ -56,7 +56,8 @@ int main(int argc, char **argv) {
 
   if (cfg.answer_dir.empty()) {
     std::cerr << color::err("[compare] [io].answer_dir is required: it holds "
-                            "the expected answers, one <name>.out per case")
+                            "the expected answers, one <name>.ans or "
+                            "<name>.out per case")
               << "\n";
     return 2;
   }
@@ -86,7 +87,7 @@ int main(int argc, char **argv) {
 
     if (!file_exists(pair.output_path)) {
       item.state = viewer::CaseState::NoOutput;
-    } else if (!file_exists(pair.expect_path)) {
+    } else if (pair.expect_path.empty()) {
       item.state = viewer::CaseState::NoAnswer;
     } else {
       CompareOption opts;
@@ -131,7 +132,9 @@ int main(int argc, char **argv) {
       std::cout << "[compare] " << item.name << ": "
                 << (item.state == viewer::CaseState::NoOutput
                         ? "no output file, run cg_b first"
-                        : "no expected answer")
+                        : "no answer file in " + cfg.answer_dir.string() +
+                              " (tried " + item.name + ".ans and " + item.name +
+                              ".out)")
                 << "\n";
     else if (item.state == viewer::CaseState::Failed)
       std::cout << color::warn("[compare] ", item.name, ": ", item.note)

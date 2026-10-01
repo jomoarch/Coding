@@ -79,7 +79,8 @@ stderr 都进同一个 `*.out`。
   `!` token 不同、`~` 只有行内空白不同、`+` 只在 output 里、`-` 只在 expect 里。
   预览结束后会询问是否把结果存到 `[io].single_result`，行为与 `cg_s` / `cg_i` 保存输出一致。
 - **`cmp_b`** 把 `[io].input_dir` 里的每个用例（`<name>.in`）的 `[io].output_dir/<name>.out` 与
-  `[io].answer_dir/<name>.out` 比一遍，用例顺序与 `cg_b` 一致（自然排序，`a2` 在 `a10` 前面），
+  `[io].answer_dir` 里的期望答案比一遍——答案是 `<name>.ans` 或 `<name>.out`，两个都在时用 `.ans`；
+  程序自己的输出永远只认 `<name>.out`。用例顺序与 `cg_b` 一致（自然排序，`a2` 在 `a10` 前面），
   然后进入用例列表：先选用例，再进去看细节。
   - 列表每行是 `序号  名称  状态  未匹配行数`，各列按 `formatter` 的规则对齐（名称列补到最长名称，
     其余列右对齐，列间两个空格），顶部一行汇总是 `N test cases, M differ`。
@@ -141,7 +142,7 @@ cg_b --help
 | `[io].single_input` | | `cg_s` 的输入文件 |
 | `[io].output_dir` | ✔ | 存放 `*.out` 的目录 |
 | `[io].single_output` | | `cg_s` / `cg_i` 询问保存时的目标文件 |
-| `[io].answer_dir` | | `cg_b` 按测试点名（`<name>.out`）取期望答案的目录；同样只影响比较 |
+| `[io].answer_dir` | | `cmp_b` 按测试点名取期望答案的目录，用 `<name>.ans` 或 `<name>.out`（都在时用 `.ans`）；只影响比较 |
 | `[io].single_answer` | | `cg_s` 要比对的期望答案；只影响比较，编译与运行不需要它 |
 | `[io].single_result` | | `cmp_s` 预览结束后询问保存的比较结果路径，也是 `view_s` 读取的路径 |
 | `[io].result_dir` | | `cmp_b` 浏览结束后询问保存结果的目录，每个用例一个 `<name>.cmp` |

@@ -163,7 +163,16 @@ ComparePairResult gen_compare_pairs(const std::filesystem::path &input_dir,
     ComparePair p;
     p.name = item.name;
     p.output_path = output_dir / (item.name + ".out");
-    p.expect_path = answer_dir / (item.name + ".out");
+
+    const std::filesystem::path as_ans = answer_dir / (item.name + ".ans");
+    const std::filesystem::path as_out = answer_dir / (item.name + ".out");
+
+    std::error_code ec;
+    if (std::filesystem::is_regular_file(as_ans, ec))
+      p.expect_path = as_ans;
+    else if (std::filesystem::is_regular_file(as_out, ec))
+      p.expect_path = as_out;
+
     r.pairs.push_back(std::move(p));
   }
 

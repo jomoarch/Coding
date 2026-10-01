@@ -57,9 +57,11 @@ single_output = "test/output"
 # <name>.cmp per test case, and what view_b browses. Not needed to compile or
 # run.
 # result_dir = "test/res"
-# Optional. Directory holding the expected answers for a batch run, matched to
-# each test case by name (<name>.out). Not needed to compile or run; a missing
-# value only fails once a comparison is attempted.
+# Optional. Directory holding the expected answers for a batch comparison,
+# matched to each test case by name. Either <name>.ans or <name>.out is used,
+# and .ans wins when both exist; the program's own output is always <name>.out.
+# Not needed to compile or run; a missing value only fails once a comparison is
+# attempted.
 # answer_dir = "test/exc"
 # Render the program's own output in cg_s / cg_i: stdout green, stderr red.
 # Ignored when the terminal cannot do colour (redirected output, NO_COLOR).
