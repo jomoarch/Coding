@@ -1,4 +1,4 @@
 .vscode/
 build/
 *.exe
-test/
+test/out/
