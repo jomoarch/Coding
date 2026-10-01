@@ -15,6 +15,7 @@ set(BASE_SOURCES
   src/base/win_error.cpp
   src/base/cleaner.cpp
   src/base/file.cpp
+  src/base/terminal.cpp
 )
 
 set(IO_SOURCES
@@ -35,6 +36,7 @@ set(APP_SOURCES
   src/app/builder.cpp
   src/app/formatter.cpp
   src/app/modes.cpp
+  src/app/viewer.cpp
 )
 
 set(COMPARE_SOURCES
@@ -86,3 +88,4 @@ add_coding_app(cg_b       src/main/main_batch.cpp)
 add_coding_app(cg_s       src/main/main_single.cpp)
 add_coding_app(cg_i       src/main/main_interactive.cpp)
 add_coding_app(clean_dir  src/main/main_clean_dir.cpp)
+add_coding_app(cmp_s      src/main/main_cmp_s.cpp)

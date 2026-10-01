@@ -1,0 +1,18 @@
+# cmp_s case: whitespace_only
+# Run: cmp_s test/cmp/whitespace_only/config.toml
+
+[compiler]
+source = "out.txt"
+output = "out.txt"
+
+[inject]
+enabled = false
+
+[runner]
+work_dir = "."
+
+[io]
+input_dir = "."
+output_dir = "."
+single_output = "out.txt"
+single_answer = "ans.txt"
