@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 if(NOT WIN32)
   message(FATAL_ERROR "This project only supports Windows.")
 endif()
@@ -48,7 +50,12 @@ set(COMPARE_SOURCES
 )
 
 set(STORE_SOURCES
-  src/store/store.cpp
+  src/store/fields.cpp
+  src/store/files.cpp
+  src/store/archive.cpp
+  src/store/index.cpp
+  src/store/single.cpp
+  src/store/batch.cpp
 )
 
 set(THIRD_PARTY_SOURCES
