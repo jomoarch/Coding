@@ -57,19 +57,59 @@ bool identical(const NameKey &a, const NameKey &b) {
   return a.class_key == b.class_key && a.digits == b.digits;
 }
 
+struct InputItem {
+  std::string name;
+  std::filesystem::path in_path;
+  NameKey key;
+};
+
+bool list_inputs(const std::filesystem::path &input_dir,
+                 std::vector<InputItem> &items, std::string &error) {
+  std::error_code ec;
+  if (!std::filesystem::exists(input_dir, ec) ||
+      !std::filesystem::is_directory(input_dir, ec)) {
+    error = "Input dir not found: " + input_dir.string();
+    return false;
+  }
+
+  for (const auto &e : std::filesystem::directory_iterator(input_dir, ec)) {
+    if (ec)
+      break;
+    if (!e.is_regular_file(ec))
+      continue;
+    if (e.path().extension() != ".in")
+      continue;
+    std::string stem = e.path().stem().string();
+    items.push_back({stem, e.path(), make_name_key(stem)});
+  }
+
+  std::sort(items.begin(), items.end(),
+            [](const InputItem &a, const InputItem &b) {
+              return compare_name_key(a.key, b.key);
+            });
+
+  for (std::size_t i = 1; i < items.size(); ++i) {
+    if (identical(items[i - 1].key, items[i].key)) {
+      error =
+          "Duplicate name (same structure and numbers): " + items[i - 1].name +
+          " vs " + items[i].name;
+      return false;
+    }
+  }
+  return true;
+}
+
 } // namespace
 
 IOFileResult gen_filepair(const IOFileOption &opts) {
   IOFileResult r;
   r.success = false;
 
-  std::error_code ec;
-  if (!std::filesystem::exists(opts.input_dir, ec) ||
-      !std::filesystem::is_directory(opts.input_dir, ec)) {
-    r.message = "Input dir not found: " + opts.input_dir.string();
+  std::vector<InputItem> items;
+  if (!list_inputs(opts.input_dir, items, r.message))
     return r;
-  }
 
+  std::error_code ec;
   if (!std::filesystem::exists(opts.output_dir, ec)) {
     std::filesystem::create_directory(opts.output_dir, ec);
     if (ec) {
@@ -89,38 +129,6 @@ IOFileResult gen_filepair(const IOFileOption &opts) {
     }
   }
 
-  struct Item {
-    std::string name;
-    std::filesystem::path in_path;
-    NameKey key;
-  };
-
-  std::vector<Item> items;
-  for (const auto &e :
-       std::filesystem::directory_iterator(opts.input_dir, ec)) {
-    if (ec)
-      break;
-    if (!e.is_regular_file(ec))
-      continue;
-    if (e.path().extension() != ".in")
-      continue;
-    std::string stem = e.path().stem().string();
-    items.push_back({stem, e.path(), make_name_key(stem)});
-  }
-
-  std::sort(items.begin(), items.end(), [](const Item &a, const Item &b) {
-    return compare_name_key(a.key, b.key);
-  });
-
-  for (std::size_t i = 1; i < items.size(); ++i) {
-    if (identical(items[i - 1].key, items[i].key)) {
-      r.message =
-          "Duplicate name (same structure and numbers): " + items[i - 1].name +
-          " vs " + items[i].name;
-      return r;
-    }
-  }
-
   r.pairs.reserve(items.size());
   for (const auto &item : items) {
     FilePair p;
@@ -132,6 +140,30 @@ IOFileResult gen_filepair(const IOFileOption &opts) {
       r.message = "Failed to create output file: " + p.output_path.string();
       return r;
     }
+    r.pairs.push_back(std::move(p));
+  }
+
+  r.success = true;
+  r.message = "Success";
+  return r;
+}
+
+ComparePairResult gen_compare_pairs(const std::filesystem::path &input_dir,
+                                    const std::filesystem::path &output_dir,
+                                    const std::filesystem::path &answer_dir) {
+  ComparePairResult r;
+  r.success = false;
+
+  std::vector<InputItem> items;
+  if (!list_inputs(input_dir, items, r.message))
+    return r;
+
+  r.pairs.reserve(items.size());
+  for (const auto &item : items) {
+    ComparePair p;
+    p.name = item.name;
+    p.output_path = output_dir / (item.name + ".out");
+    p.expect_path = answer_dir / (item.name + ".out");
     r.pairs.push_back(std::move(p));
   }
 

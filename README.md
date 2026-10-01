@@ -12,8 +12,8 @@ cmake -S . -B build
 cmake --build build --config Release
 ```
 
-六个可执行文件会直接生成在仓库根目录：`cg_b.exe`、`cg_s.exe`、`cg_i.exe`、`clean_dir.exe`、
-`cmp_s.exe`、`view_s.exe`。
+七个可执行文件会直接生成在 `bin/`：`cg_b.exe`、`cg_s.exe`、`cg_i.exe`、`clean_dir.exe`、
+`cmp_s.exe`、`cmp_b.exe`、`view_s.exe`。
 
 ## 三种模式
 
@@ -69,19 +69,32 @@ stderr 都进同一个 `*.out`。
 
 ## 比较与浏览
 
-`cmp_s` 和 `view_s` 是单文件的比较 / 浏览工具，与编译、运行解耦：它们不编译、不跑程序，只处理
-`[io].single_output`、`[io].single_answer` 和 `[io].single_result` 这三个文件。
+`cmp_s`、`cmp_b` 和 `view_s` 是比较 / 浏览工具，与编译、运行解耦：它们不编译、不跑程序，只处理
+`[io].single_output`、`[io].single_answer`、`[io].single_result`、`[io].result_dir` 和
+`[io].answer_dir` 这些文件。**注意 `cmp_b` 不会碰 `[io].output_dir`**：它不清理、也不创建空的
+`.out`，只读取里面已经跑出来的结果。
 
 - **`cmp_s`** 比较 `[io].single_output` 与 `[io].single_answer`，然后进入全屏预览：顶部是匹配状态与
   两侧行数，下面是未匹配行的行号列表（两个数字都右对齐），每行前面还有一个类型标记：
   `!` token 不同、`~` 只有行内空白不同、`+` 只在 output 里、`-` 只在 expect 里。
   预览结束后会询问是否把结果存到 `[io].single_result`，行为与 `cg_s` / `cg_i` 保存输出一致。
+- **`cmp_b`** 把 `[io].input_dir` 里的每个用例（`<name>.in`）的 `[io].output_dir/<name>.out` 与
+  `[io].answer_dir/<name>.out` 比一遍，用例顺序与 `cg_b` 一致（自然排序，`a2` 在 `a10` 前面），
+  然后进入用例列表：先选用例，再进去看细节。
+  - 列表每行是 `序号  名称  状态  未匹配行数`，各列按 `formatter` 的规则对齐（名称列补到最长名称，
+    其余列右对齐，列间两个空格），顶部一行汇总是 `N test cases, M differ`。
+  - `j` / `k`（或方向键）移动光标，`Ctrl+j` / `Ctrl+k`（或 `Ctrl+方向键`）只滚动视野，`Enter` 进入
+    光标所在的用例，`Backspace` 退回列表（光标回到刚进的那个用例），`q` / `Esc` **全局退出**。
+  - 状态是 `matched` / `differ` / `no output` / `no answer` / `failed`。只有前两种能进去看；
+    缺文件或比较失败的用例会在进列表前用普通文本说明原因。
+  - 退出后询问是否把每个用例的结果存成 `[io].result_dir/<name>.cmp`（没有比较过的用例没有文件）。
 - **`view_s`** 只读取 `[io].single_result` 渲染，不进行比较；适合先把结果存下来、之后反复打开。
 
-预览按键：`j` / `k`（或方向键）移动光标，`Enter` 展开或跳到下一个不同的 token，`Shift+Enter` 回到上一
-个 token 或收回，`c` 收回当前，`r` 全部收回，`q` / `Esc` 退出，`Ctrl+j` / `Ctrl+k` 只滚动视野。
+用例内部的按键：`j` / `k`（或方向键）移动光标，`Enter` / `→` 展开或跳到下一个不同的 token，
+`Shift+Enter` / `←` 回到上一个 token 或收回，`c` 收回当前，`r` 全部收回，`Ctrl+j` / `Ctrl+k` 只滚动
+视野，`Backspace` 退回用例列表，`q` / `Esc` 全局退出。
 
-两个工具都支持 `[options] [config.toml]`，选项为 `-c/--config`、`--pause`、`--no-pause`、`-h/--help`；
+三个工具都支持 `[options] [config.toml]`，选项为 `-c/--config`、`--pause`、`--no-pause`、`-h/--help`；
 退出码 `0` 一致、`1` 不一致、`2` 配置或 IO 出错。
 
 ## 用法
@@ -128,6 +141,7 @@ cg_b --help
 | `[io].answer_dir` | | `cg_b` 按测试点名（`<name>.out`）取期望答案的目录；同样只影响比较 |
 | `[io].single_answer` | | `cg_s` 要比对的期望答案；只影响比较，编译与运行不需要它 |
 | `[io].single_result` | | `cmp_s` 预览结束后询问保存的比较结果路径，也是 `view_s` 读取的路径 |
+| `[io].result_dir` | | `cmp_b` 浏览结束后询问保存结果的目录，每个用例一个 `<name>.cmp` |
 | `[io].colorize_output` | | `cg_s` / `cg_i` 是否给程序自身输出染色（默认 `true`）|
 | `[compare].level` | | 反馈细度：`"text"` 只看是否匹配、`"line"` 另给未匹配行数与行序列、`"token"` 再给行内不同的 token（默认 `"line"`）|
 | `[compare].list_unmatched` | | 是否列出未匹配的行（默认 `false`；`level = "text"` 时静默忽略）|

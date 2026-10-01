@@ -169,6 +169,9 @@ bool Session::read(Key &out) const {
     case VK_RETURN:
       out = shift ? Key::ShiftEnter : Key::Enter;
       return true;
+    case VK_BACK:
+      out = Key::Backspace;
+      return true;
     case VK_ESCAPE:
       out = Key::Quit;
       return true;

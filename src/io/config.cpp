@@ -137,6 +137,7 @@ ConfigResult load_config(const std::filesystem::path &path) {
     read_field(t, "single_output", c.single_output);
     read_field(t, "single_answer", c.single_answer);
     read_field(t, "single_result", c.single_result);
+    read_field(t, "result_dir", c.result_dir);
     read_field(t, "answer_dir", c.answer_dir);
     read_field(t, "colorize_output", c.colorize_output);
   });
@@ -149,7 +150,8 @@ ConfigResult load_config(const std::filesystem::path &path) {
   const auto base = std::filesystem::absolute(path).parent_path();
   resolve_all(base, c.source_path, c.exe_path, c.exe_path_probe, c.work_dir,
               c.input_dir, c.output_dir, c.single_input, c.single_output,
-              c.single_answer, c.single_result, c.answer_dir, c.inject_header);
+              c.single_answer, c.single_result, c.result_dir, c.answer_dir,
+              c.inject_header);
 
   if (c.exe_path_probe.empty() && !c.exe_path.empty())
     c.exe_path_probe = derive_probe_path(c.exe_path);

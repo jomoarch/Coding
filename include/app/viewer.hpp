@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace viewer {
@@ -38,9 +39,42 @@ void reshape(State &state, std::size_t width, std::size_t height);
 void apply(State &state, term::Key key, std::size_t height);
 
 std::string render(const CompareResult &result, const State &state,
-                   std::size_t height);
+                   std::size_t height, std::string_view title = {});
 
 int view(const CompareResult &result);
+
+enum class CaseState { Identical, Differ, NoOutput, NoAnswer, Failed };
+
+struct Case {
+  std::string name;
+  CaseState state{CaseState::Failed};
+  CompareResult result;
+  std::string note;
+};
+
+struct BatchState {
+  std::size_t width{0};
+  std::size_t header{1};
+  std::size_t cursor{0};
+  std::size_t top{0};
+  std::ptrdiff_t entered{-1};
+  State inner;
+};
+
+bool case_browsable(const Case &item) noexcept;
+
+BatchState make_batch_state(std::size_t width);
+
+void reshape_batch(BatchState &state, const std::vector<Case> &cases,
+                   std::size_t width, std::size_t height);
+
+void apply_batch(BatchState &state, const std::vector<Case> &cases,
+                 term::Key key, std::size_t height);
+
+std::string render_batch(const std::vector<Case> &cases,
+                         const BatchState &state, std::size_t height);
+
+int view_batch(const std::vector<Case> &cases);
 
 } // namespace viewer
 

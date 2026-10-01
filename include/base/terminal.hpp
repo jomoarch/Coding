@@ -16,6 +16,7 @@ enum class Key {
   ViewDown,
   Enter,
   ShiftEnter,
+  Backspace,
   Collapse,
   CollapseAll,
   Quit,

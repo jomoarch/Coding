@@ -308,6 +308,7 @@ void apply(State &state, term::Key key, std::size_t height) {
     break;
   case term::Key::Quit:
   case term::Key::Resize:
+  case term::Key::Backspace:
     return;
   }
 
@@ -318,7 +319,7 @@ void apply(State &state, term::Key key, std::size_t height) {
 }
 
 std::string render(const CompareResult &result, const State &state,
-                   std::size_t height) {
+                   std::size_t height, std::string_view title) {
   const std::size_t visible = list_rows(height, state.header);
 
   std::string frame = "\x1b[H";
@@ -342,7 +343,10 @@ std::string render(const CompareResult &result, const State &state,
       frame += "\r\n";
   };
 
-  put(status_of(result), false);
+  std::string status = status_of(result);
+  if (!title.empty())
+    status = std::string(title) + "   " + status;
+  put(status, false);
   if (!result.warning.empty())
     put("warning: " + result.warning, false);
 
@@ -396,6 +400,238 @@ int view(const CompareResult &result) {
       continue;
     }
     apply(state, key, size.rows);
+  }
+
+  session.close();
+  return 0;
+}
+
+namespace {
+
+std::string case_label(const Case &item) {
+  switch (item.state) {
+  case CaseState::Identical:
+    return "matched";
+  case CaseState::Differ:
+    return "differ";
+  case CaseState::NoOutput:
+    return "no output";
+  case CaseState::NoAnswer:
+    return "no answer";
+  case CaseState::Failed:
+    return "failed";
+  }
+  return "";
+}
+
+std::string case_count(const Case &item) {
+  if (item.state != CaseState::Differ)
+    return {};
+  return std::to_string(item.result.unmatched_line_count) + " lines";
+}
+
+std::string batch_summary(const std::vector<Case> &cases) {
+  std::size_t differ = 0;
+  std::size_t missing = 0;
+  for (const Case &item : cases) {
+    if (item.state == CaseState::Differ)
+      ++differ;
+    else if (item.state != CaseState::Identical)
+      ++missing;
+  }
+
+  std::string out = std::to_string(cases.size());
+  out += cases.size() == 1 ? " test case" : " test cases";
+  if (differ != 0)
+    out += ", " + std::to_string(differ) + " differ";
+  if (missing != 0)
+    out += ", " + std::to_string(missing) + " without a result";
+  if (differ == 0 && missing == 0)
+    out += ", all matched";
+  return out;
+}
+
+std::string case_row(const std::vector<Case> &cases, std::size_t index,
+                     std::size_t w_index, std::size_t w_name,
+                     std::size_t w_status, std::size_t w_count) {
+  const Case &item = cases[index];
+
+  std::string row = text::pad_left(std::to_string(index + 1), w_index);
+  row += "  ";
+  row += text::pad_right(item.name, w_name);
+  row += "  ";
+  row += text::pad_right(case_label(item), w_status);
+
+  const std::string count = case_count(item);
+  if (!count.empty()) {
+    row += "  ";
+    row += text::pad_left(count, w_count);
+  }
+  return row;
+}
+
+void clamp_batch_range(BatchState &state, const std::vector<Case> &cases,
+                       std::size_t height) {
+  const std::size_t visible = list_rows(height, state.header);
+  const std::size_t total = cases.size();
+  state.top = std::min(state.top, total > visible ? total - visible : 0);
+}
+
+void clamp_batch(BatchState &state, const std::vector<Case> &cases,
+                 std::size_t height) {
+  const std::size_t visible = list_rows(height, state.header);
+  if (visible != 0) {
+    if (state.cursor < state.top)
+      state.top = state.cursor;
+    else if (state.cursor >= state.top + visible)
+      state.top = state.cursor - visible + 1;
+  }
+  clamp_batch_range(state, cases, height);
+}
+
+} // namespace
+
+bool case_browsable(const Case &item) noexcept {
+  return item.state == CaseState::Identical || item.state == CaseState::Differ;
+}
+
+BatchState make_batch_state(std::size_t width) {
+  BatchState state;
+  state.width = fit_width(width);
+  return state;
+}
+
+void reshape_batch(BatchState &state, const std::vector<Case> &cases,
+                   std::size_t width, std::size_t height) {
+  state.width = fit_width(width);
+  if (state.entered >= 0)
+    reshape(state.inner, state.width, height);
+  clamp_batch(state, cases, height);
+}
+
+void apply_batch(BatchState &state, const std::vector<Case> &cases,
+                 term::Key key, std::size_t height) {
+  if (cases.empty())
+    return;
+
+  if (state.entered >= 0) {
+    if (key == term::Key::Backspace) {
+      state.entered = -1;
+      state.inner = State{};
+      clamp_batch(state, cases, height);
+      return;
+    }
+    apply(state.inner, key, height);
+    return;
+  }
+
+  switch (key) {
+  case term::Key::Up:
+    if (state.cursor > 0)
+      --state.cursor;
+    break;
+  case term::Key::Down:
+    if (state.cursor + 1 < cases.size())
+      ++state.cursor;
+    break;
+  case term::Key::ViewUp:
+    if (state.top > 0)
+      --state.top;
+    clamp_batch_range(state, cases, height);
+    return;
+  case term::Key::ViewDown:
+    ++state.top;
+    clamp_batch_range(state, cases, height);
+    return;
+  case term::Key::Enter:
+  case term::Key::Right:
+    if (case_browsable(cases[state.cursor])) {
+      state.inner = make_state(cases[state.cursor].result, state.width);
+      state.entered = static_cast<std::ptrdiff_t>(state.cursor);
+    }
+    break;
+  default:
+    return;
+  }
+
+  clamp_batch(state, cases, height);
+}
+
+std::string render_batch(const std::vector<Case> &cases,
+                         const BatchState &state, std::size_t height) {
+  std::string frame = "\x1b[H";
+  std::size_t used = 0;
+
+  auto put = [&](const std::string &content, bool highlight) {
+    if (used >= height)
+      return;
+    std::string row = clip(content, state.width);
+    if (highlight) {
+      const std::size_t columns = text::display_width(row);
+      frame += "\x1b[7m" + row;
+      if (columns < state.width)
+        frame += std::string(state.width - columns, ' ');
+      frame += "\x1b[0m";
+    } else {
+      frame += row + "\x1b[K";
+    }
+    ++used;
+    if (used < height)
+      frame += "\r\n";
+  };
+
+  put(batch_summary(cases), false);
+
+  std::size_t w_index = digits(cases.size());
+  std::size_t w_name = 0;
+  std::size_t w_status = 0;
+  std::size_t w_count = 0;
+  for (const Case &item : cases) {
+    w_name = std::max(w_name, text::display_width(item.name));
+    w_status = std::max(w_status, text::display_width(case_label(item)));
+    w_count = std::max(w_count, text::display_width(case_count(item)));
+  }
+
+  for (std::size_t i = state.top; i < cases.size() && used < height; ++i)
+    put(case_row(cases, i, w_index, w_name, w_status, w_count),
+        i == state.cursor);
+
+  while (used < height)
+    put(std::string(), false);
+
+  return frame;
+}
+
+int view_batch(const std::vector<Case> &cases) {
+  term::Session session;
+  std::string error;
+  if (!term::Session::open(session, error)) {
+    std::cerr << color::err("[view] ", error) << "\n";
+    return 1;
+  }
+
+  term::Size size = session.size();
+  BatchState state = make_batch_state(size.columns);
+
+  for (;;) {
+    if (state.entered >= 0) {
+      const Case &item = cases[static_cast<std::size_t>(state.entered)];
+      session.write(render(item.result, state.inner, size.rows, item.name));
+    } else {
+      session.write(render_batch(cases, state, size.rows));
+    }
+
+    term::Key key{};
+    if (!session.read(key))
+      break;
+    if (key == term::Key::Quit)
+      break;
+    if (key == term::Key::Resize) {
+      size = session.size();
+      reshape_batch(state, cases, size.columns, size.rows);
+      continue;
+    }
+    apply_batch(state, cases, key, size.rows);
   }
 
   session.close();
