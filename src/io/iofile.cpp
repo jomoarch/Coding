@@ -171,3 +171,7 @@ ComparePairResult gen_compare_pairs(const std::filesystem::path &input_dir,
   r.message = "Success";
   return r;
 }
+
+bool case_name_less(const std::string &a, const std::string &b) {
+  return compare_name_key(make_name_key(a), make_name_key(b));
+}

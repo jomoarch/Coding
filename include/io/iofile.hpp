@@ -39,4 +39,6 @@ gen_compare_pairs(const std::filesystem::path &input_dir,
                   const std::filesystem::path &output_dir,
                   const std::filesystem::path &answer_dir);
 
+bool case_name_less(const std::string &a, const std::string &b);
+
 #endif // IOFILE_HPP

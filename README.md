@@ -12,8 +12,8 @@ cmake -S . -B build
 cmake --build build --config Release
 ```
 
-七个可执行文件会直接生成在 `bin/`：`cg_b.exe`、`cg_s.exe`、`cg_i.exe`、`clean_dir.exe`、
-`cmp_s.exe`、`cmp_b.exe`、`view_s.exe`。
+八个可执行文件会直接生成在 `bin/`：`cg_b.exe`、`cg_s.exe`、`cg_i.exe`、`clean_dir.exe`、
+`cmp_s.exe`、`cmp_b.exe`、`view_s.exe`、`view_b.exe`。
 
 ## 三种模式
 
@@ -69,8 +69,8 @@ stderr 都进同一个 `*.out`。
 
 ## 比较与浏览
 
-`cmp_s`、`cmp_b` 和 `view_s` 是比较 / 浏览工具，与编译、运行解耦：它们不编译、不跑程序，只处理
-`[io].single_output`、`[io].single_answer`、`[io].single_result`、`[io].result_dir` 和
+`cmp_s`、`cmp_b`、`view_s` 和 `view_b` 是比较 / 浏览工具，与编译、运行解耦：它们不编译、不跑程序，
+只处理 `[io].single_output`、`[io].single_answer`、`[io].single_result`、`[io].result_dir` 和
 `[io].answer_dir` 这些文件。**注意 `cmp_b` 不会碰 `[io].output_dir`**：它不清理、也不创建空的
 `.out`，只读取里面已经跑出来的结果。
 
@@ -89,12 +89,15 @@ stderr 都进同一个 `*.out`。
     缺文件或比较失败的用例会在进列表前用普通文本说明原因。
   - 退出后询问是否把每个用例的结果存成 `[io].result_dir/<name>.cmp`（没有比较过的用例没有文件）。
 - **`view_s`** 只读取 `[io].single_result` 渲染，不进行比较；适合先把结果存下来、之后反复打开。
+- **`view_b`** 只读取 `[io].result_dir` 里的 `<name>.cmp` 进上面那套批量浏览器，不进行比较。列表
+  顺序和批量跑的时候一致（自然排序），读不出来的结果文件会标成 `unreadable`，进列表前用普通文本
+  说明原因。
 
 用例内部的按键：`j` / `k`（或方向键）移动光标，`Enter` / `→` 展开或跳到下一个不同的 token，
 `Shift+Enter` / `←` 回到上一个 token 或收回，`c` 收回当前，`r` 全部收回，`Ctrl+j` / `Ctrl+k` 只滚动
 视野，`Backspace` 退回用例列表，`q` / `Esc` 全局退出。
 
-三个工具都支持 `[options] [config.toml]`，选项为 `-c/--config`、`--pause`、`--no-pause`、`-h/--help`；
+四个工具都支持 `[options] [config.toml]`，选项为 `-c/--config`、`--pause`、`--no-pause`、`-h/--help`；
 退出码 `0` 一致、`1` 不一致、`2` 配置或 IO 出错。
 
 ## 用法

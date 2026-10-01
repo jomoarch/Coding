@@ -43,7 +43,14 @@ std::string render(const CompareResult &result, const State &state,
 
 int view(const CompareResult &result);
 
-enum class CaseState { Identical, Differ, NoOutput, NoAnswer, Failed };
+enum class CaseState {
+  Identical,
+  Differ,
+  NoOutput,
+  NoAnswer,
+  Unreadable,
+  Failed
+};
 
 struct Case {
   std::string name;

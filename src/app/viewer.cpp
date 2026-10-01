@@ -418,6 +418,8 @@ std::string case_label(const Case &item) {
     return "no output";
   case CaseState::NoAnswer:
     return "no answer";
+  case CaseState::Unreadable:
+    return "unreadable";
   case CaseState::Failed:
     return "failed";
   }

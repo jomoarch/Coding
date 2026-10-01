@@ -54,7 +54,8 @@ single_output = "test/output"
 # over, and what view_s renders. Not needed to compile or run.
 # single_result = "test/result.cmp"
 # Optional. Where cmp_b offers to save every result once browsing is over, one
-# <name>.cmp per test case. Not needed to compile or run.
+# <name>.cmp per test case, and what view_b browses. Not needed to compile or
+# run.
 # result_dir = "test/res"
 # Optional. Directory holding the expected answers for a batch run, matched to
 # each test case by name (<name>.out). Not needed to compile or run; a missing
