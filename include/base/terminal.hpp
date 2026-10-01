@@ -10,6 +10,8 @@ namespace term {
 enum class Key {
   Up,
   Down,
+  Left,
+  Right,
   ViewUp,
   ViewDown,
   Enter,

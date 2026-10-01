@@ -278,6 +278,7 @@ void apply(State &state, term::Key key, std::size_t height) {
     ++state.top;
     follow_cursor = false;
     break;
+  case term::Key::Right:
   case term::Key::Enter:
     if (!node.expanded)
       expand(state, node);
@@ -286,8 +287,11 @@ void apply(State &state, term::Key key, std::size_t height) {
     else
       collapse(node);
     break;
+  case term::Key::Left:
   case term::Key::ShiftEnter:
     if (!node.expanded)
+      return;
+    if (node.token == 0 && key == term::Key::Left)
       return;
     if (node.token_case && node.token > 0)
       --node.token;

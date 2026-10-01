@@ -160,6 +160,12 @@ bool Session::read(Key &out) const {
     case VK_DOWN:
       out = ctrl ? Key::ViewDown : Key::Down;
       return true;
+    case VK_LEFT:
+      out = Key::Left;
+      return true;
+    case VK_RIGHT:
+      out = Key::Right;
+      return true;
     case VK_RETURN:
       out = shift ? Key::ShiftEnter : Key::Enter;
       return true;
