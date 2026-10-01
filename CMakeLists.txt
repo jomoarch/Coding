@@ -41,6 +41,7 @@ set(APP_SOURCES
 
 set(COMPARE_SOURCES
   src/compare/compare.cpp
+  src/compare/serialize.cpp
 )
 
 set(THIRD_PARTY_SOURCES
