@@ -23,6 +23,21 @@
 
 namespace {
 
+constexpr FeedbackLevel kLevels[] = {FeedbackLevel::Text, FeedbackLevel::Line,
+                                     FeedbackLevel::Token};
+
+const char *level_name(FeedbackLevel level) noexcept {
+  switch (level) {
+  case FeedbackLevel::Text:
+    return "text";
+  case FeedbackLevel::Line:
+    return "line";
+  case FeedbackLevel::Token:
+    return "token";
+  }
+  return "line";
+}
+
 constexpr std::size_t kChunkedReadThreshold = 1u << 18;
 constexpr std::size_t kReadChunk = 1u << 18;
 
@@ -390,4 +405,24 @@ CompareResult compare_output(const CompareOption &opts) {
                                                 result.unmatched_lines.size();
   result.success = true;
   return result;
+}
+
+bool parse_feedback_level(std::string_view name, FeedbackLevel &out) {
+  for (FeedbackLevel level : kLevels) {
+    if (name == level_name(level)) {
+      out = level;
+      return true;
+    }
+  }
+  return false;
+}
+
+std::string feedback_level_names() {
+  std::string names;
+  for (FeedbackLevel level : kLevels) {
+    if (!names.empty())
+      names += ", ";
+    names += level_name(level);
+  }
+  return names;
 }

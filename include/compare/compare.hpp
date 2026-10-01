@@ -7,9 +7,15 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <vector>
 
 enum class FeedbackLevel { Text, Line, Token };
+
+[[nodiscard]] bool parse_feedback_level(std::string_view name,
+                                        FeedbackLevel &out);
+
+[[nodiscard]] std::string feedback_level_names();
 
 enum class LineKind { Differ, OnlyOutput, OnlyExpect };
 

@@ -104,8 +104,14 @@ cg_b --help
 | `[runner].time_limit_ms` | | CPU 时间上限 |
 | `[runner].memory_limit_mb` | | 内存上限 |
 | `[io].input_dir` | ✔ | 存放 `*.in` 的目录（`-s` / `-i` 模式也要求填写） |
-| `[io].output_dir` | ✔ | 存放 `*.out` 的目录 |
 | `[io].single_input` | | `cg_s` 的输入文件 |
+| `[io].output_dir` | ✔ | 存放 `*.out` 的目录 |
 | `[io].single_output` | | `cg_s` / `cg_i` 询问保存时的目标文件 |
+| `[io].answer_dir` | | `cg_b` 按测试点名（`<name>.out`）取期望答案的目录；同样只影响比较 |
+| `[io].single_answer` | | `cg_s` 要比对的期望答案；只影响比较，编译与运行不需要它 |
 | `[io].colorize_output` | | `cg_s` / `cg_i` 是否给程序自身输出染色（默认 `true`）|
+| `[compare].level` | | 反馈细度：`"text"` 只看是否匹配、`"line"` 另给未匹配行数与行序列、`"token"` 再给行内不同的 token（默认 `"line"`）|
+| `[compare].list_unmatched` | | 是否列出未匹配的行（默认 `false`；`level = "text"` 时静默忽略）|
+| `[compare].max_lines` | | 列出多少条未匹配行，`0` 为不限（默认 `0`；只影响列出的条数，不影响总数）|
+| `[compare].token_diff` | | 是否给出每行不同的 token（默认 `false`；非 `level = "token"` 时静默忽略）|
 | `[thread].thread_max` | | 并发测试点数，同时受 CPU 核心数限制 |

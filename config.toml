@@ -47,9 +47,31 @@ output_dir = "test/out"
 single_input = "test/input"
 # Used by cg_s / cg_i to offer saving the captured output.
 single_output = "test/output"
+# Optional. Expected answer compared against [io].single_output. Not needed to
+# compile or run; a missing value only fails once a comparison is attempted.
+# single_answer = "test/exc/solution.out"
+# Optional. Directory holding the expected answers for a batch run, matched to
+# each test case by name (<name>.out). Not needed to compile or run; a missing
+# value only fails once a comparison is attempted.
+# answer_dir = "test/exc"
 # Render the program's own output in cg_s / cg_i: stdout green, stderr red.
 # Ignored when the terminal cannot do colour (redirected output, NO_COLOR).
 colorize_output = true
+
+[compare]
+# Optional. How much detail a mismatch is reported with:
+#   "text"  only whether the two files match
+#   "line"  also the number of differing lines, and optionally which ones
+#   "token" also which tokens inside those lines differ
+level = "line"
+# Optional. List the unmatched lines. Silently ignored at level = "text".
+list_unmatched = false
+# Optional. Cap on how many unmatched lines are listed; 0 means no cap. It never
+# affects the reported total. Silently ignored at level = "text".
+max_lines = 0
+# Optional. Fill in the differing tokens of the listed lines. Silently ignored
+# unless level = "token".
+token_diff = false
 
 [thread]
 # Optional. Maximum concurrent test cases; also capped by the CPU count.

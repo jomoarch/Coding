@@ -2,6 +2,7 @@
 #define CONFIG_HPP
 
 #include "base\result.hpp"
+#include "compare\compare.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -29,10 +30,18 @@ struct AppConfig {
 
   // io
   std::filesystem::path input_dir;
-  std::filesystem::path output_dir;
   std::filesystem::path single_input;
+  std::filesystem::path output_dir;
   std::filesystem::path single_output;
+  std::filesystem::path answer_dir;
+  std::filesystem::path single_answer;
   bool colorize_output{true};
+
+  // compare
+  FeedbackLevel level{FeedbackLevel::Line};
+  bool list_unmatched{false};
+  std::size_t max_lines{0};
+  bool token_diff{false};
 
   // thread
   std::size_t thread_max{1};

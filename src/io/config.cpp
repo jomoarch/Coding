@@ -135,8 +135,30 @@ ConfigResult load_config(const std::filesystem::path &path) {
     read_field(t, "output_dir", c.output_dir);
     read_field(t, "single_input", c.single_input);
     read_field(t, "single_output", c.single_output);
+    read_field(t, "single_answer", c.single_answer);
+    read_field(t, "answer_dir", c.answer_dir);
     read_field(t, "colorize_output", c.colorize_output);
   });
+
+  // [compare]
+  if (const auto *t = tbl["compare"].as_table()) {
+    if (auto v = (*t)["level"].value<std::string>()) {
+      if (!parse_feedback_level(*v, c.level)) {
+        r.message = "Config: [compare].level must be one of " +
+                    feedback_level_names() + ", got \"" + *v + "\"";
+        return r;
+      }
+    }
+    if (auto v = (*t)["max_lines"].value<int64_t>()) {
+      if (*v < 0) {
+        r.message = "Config: [compare].max_lines must be >= 0";
+        return r;
+      }
+      c.max_lines = static_cast<std::size_t>(*v);
+    }
+    read_field(*t, "list_unmatched", c.list_unmatched);
+    read_field(*t, "token_diff", c.token_diff);
+  }
 
   // [thread]
   read_section(tbl, "thread", [&](const toml::table &t) {
@@ -146,7 +168,7 @@ ConfigResult load_config(const std::filesystem::path &path) {
   const auto base = std::filesystem::absolute(path).parent_path();
   resolve_all(base, c.source_path, c.exe_path, c.exe_path_probe, c.work_dir,
               c.input_dir, c.output_dir, c.single_input, c.single_output,
-              c.inject_header);
+              c.single_answer, c.answer_dir, c.inject_header);
 
   if (c.exe_path_probe.empty() && !c.exe_path.empty())
     c.exe_path_probe = derive_probe_path(c.exe_path);
