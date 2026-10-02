@@ -55,6 +55,11 @@ struct BatchState {
 
 bool case_browsable(const Case &item) noexcept;
 
+enum class BatchAction { Feed, Quit, Back };
+
+[[nodiscard]] BatchAction batch_action(const BatchState &state,
+                                       term::Key key) noexcept;
+
 BatchState make_batch_state(std::size_t width);
 
 void reshape_batch(BatchState &state, const std::vector<Case> &cases,

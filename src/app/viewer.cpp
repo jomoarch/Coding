@@ -498,6 +498,15 @@ bool case_browsable(const Case &item) noexcept {
   return item.state == CaseState::Identical || item.state == CaseState::Differ;
 }
 
+BatchAction batch_action(const BatchState &state, term::Key key) noexcept {
+  if (state.entered >= 0) {
+    if (key == term::Key::Quit || key == term::Key::Backspace)
+      return BatchAction::Back;
+    return BatchAction::Feed;
+  }
+  return key == term::Key::Quit ? BatchAction::Quit : BatchAction::Feed;
+}
+
 BatchState make_batch_state(std::size_t width) {
   BatchState state;
   state.width = fit_width(width);
@@ -627,8 +636,15 @@ int view_batch(const std::vector<Case> &cases) {
     term::Key key{};
     if (!session.read(key))
       break;
-    if (key == term::Key::Quit)
+
+    const BatchAction action = batch_action(state, key);
+    if (action == BatchAction::Quit)
       break;
+    if (action == BatchAction::Back) {
+      apply_batch(state, cases, term::Key::Backspace, size.rows);
+      continue;
+    }
+
     if (key == term::Key::Resize) {
       size = session.size();
       reshape_batch(state, cases, size.columns, size.rows);
