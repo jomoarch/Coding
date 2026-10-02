@@ -8,6 +8,11 @@
 #
 #   bin/config.link  ->  D:\oj\my-config.toml
 #
+# config.link is not TOML: the first line that is not blank and does not start
+# with '#' is the path of a config file, absolute or relative to the directory
+# holding config.link. Spaces around it, surrounding quotes and a UTF-8 BOM are
+# ignored, so pasting Explorer's "copy as path" works as it is.
+#
 # A tool looks for, in order: the path given with -c (or config.toml in the
 # current directory), then config.toml next to the .exe, then that link. A real
 # symlink named config.toml next to the .exe needs no link file at all, because

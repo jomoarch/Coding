@@ -52,11 +52,27 @@ std::filesystem::path read_pointer(const std::filesystem::path &link) {
     return {};
 
   std::string line;
+  bool first = true;
   while (std::getline(file, line)) {
+    if (first) {
+      first = false;
+      if (line.size() >= 3 && static_cast<unsigned char>(line[0]) == 0xEF &&
+          static_cast<unsigned char>(line[1]) == 0xBB &&
+          static_cast<unsigned char>(line[2]) == 0xBF)
+        line.erase(0, 3);
+    }
     if (!line.empty() && line.back() == '\r')
       line.pop_back();
-    const std::string_view trimmed = text::trim(line);
+
+    std::string_view trimmed = text::trim(line);
     if (trimmed.empty() || trimmed.front() == '#')
+      continue;
+
+    if (trimmed.size() >= 2 &&
+        ((trimmed.front() == '"' && trimmed.back() == '"') ||
+         (trimmed.front() == '\'' && trimmed.back() == '\'')))
+      trimmed = text::trim(trimmed.substr(1, trimmed.size() - 2));
+    if (trimmed.empty())
       continue;
 
     const std::filesystem::path target(trimmed);
