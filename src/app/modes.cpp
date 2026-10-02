@@ -247,6 +247,7 @@ int run_batch(const AppConfig &cfg) {
     return report_missing(missing);
 
   std::cout << "Config: " << cfg.config_path.string() << "\n"
+            << "  base      : " << cfg.base.string() << "\n"
             << "  source    : " << cfg.source_path.string() << "\n"
             << "  exe       : " << cfg.exe_path.string() << "\n"
             << "  input_dir : " << cfg.input_dir.string() << "\n"

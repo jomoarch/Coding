@@ -1,6 +1,23 @@
 # Every key here is optional. Loading only reads the file and fills in defaults;
 # each tool then checks the fields it actually needs, so a config that serves
 # just one of them is fine.
+#
+# Relative paths below start at `base`. To share one config between several
+# copies of the tools, keep this file wherever you like and leave a one line
+# config.link next to the .exe holding its path:
+#
+#   bin/config.link  ->  D:\oj\my-config.toml
+#
+# A tool looks for, in order: the path given with -c (or config.toml in the
+# current directory), then config.toml next to the .exe, then that link. A real
+# symlink named config.toml next to the .exe needs no link file at all, because
+# Windows resolves it before anything here sees it.
+
+# Optional. Every relative path in this file is resolved against this. It may be
+# absolute, or relative (a relative one starts at the directory of this file).
+# Without it, paths resolve against that directory, which is what they always
+# did.
+# base = "D:/oj/my-problem"
 
 [compiler]
 # Used by cg_b / cg_s / cg_i. The solution to compile.

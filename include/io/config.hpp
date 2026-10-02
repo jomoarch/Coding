@@ -13,6 +13,8 @@
 struct AppConfig {
   std::filesystem::path config_path;
 
+  std::filesystem::path base;
+
   // compiler
   std::filesystem::path source_path;
   std::filesystem::path exe_path;

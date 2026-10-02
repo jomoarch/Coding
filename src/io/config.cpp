@@ -1,10 +1,13 @@
 #include "io/config.hpp"
+#include "base/text.hpp"
 #include "toml.hpp"
 
 #include <windows.h>
 
 #include <fstream>
+#include <iostream>
 #include <sstream>
+#include <string_view>
 #include <system_error>
 
 namespace {
@@ -37,6 +40,76 @@ std::filesystem::path module_dir() {
 std::filesystem::path derive_probe_path(const std::filesystem::path &p) {
   return p.parent_path() /
          (p.stem().string() + ".probe" + p.extension().string());
+}
+
+std::filesystem::path read_pointer(const std::filesystem::path &link) {
+  std::error_code ec;
+  if (!std::filesystem::is_regular_file(link, ec))
+    return {};
+
+  std::ifstream file(link, std::ios::binary);
+  if (!file)
+    return {};
+
+  std::string line;
+  while (std::getline(file, line)) {
+    if (!line.empty() && line.back() == '\r')
+      line.pop_back();
+    const std::string_view trimmed = text::trim(line);
+    if (trimmed.empty() || trimmed.front() == '#')
+      continue;
+
+    const std::filesystem::path target(trimmed);
+    if (target.is_absolute())
+      return target;
+    return link.parent_path() / target;
+  }
+  return {};
+}
+
+struct LocatedConfig {
+  std::filesystem::path path;
+  std::string note;
+};
+
+LocatedConfig locate_config(const std::filesystem::path &requested) {
+  LocatedConfig found;
+
+  std::error_code ec;
+  if (std::filesystem::is_regular_file(requested, ec)) {
+    found.path = requested;
+    return found;
+  }
+
+  const std::filesystem::path exe = module_dir();
+  if (exe.empty())
+    return found;
+
+  const bool defaulted = !requested.is_absolute() &&
+                         requested == std::filesystem::path("config.toml");
+  if (defaulted) {
+    const std::filesystem::path beside = exe / "config.toml";
+    if (std::filesystem::is_regular_file(beside, ec)) {
+      found.path = beside;
+      found.note = "using " + beside.string() + " (next to the executable)";
+      return found;
+    }
+  }
+
+  const std::filesystem::path link = exe / "config.link";
+  const std::filesystem::path target = read_pointer(link);
+  if (!target.empty()) {
+    if (!std::filesystem::is_regular_file(target, ec)) {
+      found.note = link.string() + " points at " + target.string() +
+                   ", which is not there";
+      found.path = requested;
+      return found;
+    }
+    found.path = target;
+    found.note =
+        "using " + target.string() + " (followed " + link.string() + ")";
+  }
+  return found;
 }
 
 template <class T>
@@ -84,16 +157,25 @@ ConfigResult load_config(const std::filesystem::path &path) {
   ConfigResult r;
   r.success = false;
 
-  std::error_code ec;
-  if (!std::filesystem::exists(path, ec)) {
-    r.message = "Config not found: " + path.string();
+  const LocatedConfig located = locate_config(path);
+  if (located.path.empty()) {
+    r.message = "Config not found: " + path.string() +
+                " (and no config.toml or config.link next to the executable)";
     return r;
   }
-  r.config.config_path = path;
+  if (!located.note.empty() && located.path == path) {
+    r.message = located.note;
+    return r;
+  }
+  if (!located.note.empty())
+    std::cerr << "[config] " << located.note << "\n";
+
+  const std::filesystem::path &config = located.path;
+  r.config.config_path = config;
 
   toml::table tbl;
   try {
-    tbl = toml::parse_file(path.string());
+    tbl = toml::parse_file(config.string());
   } catch (const toml::parse_error &e) {
     std::ostringstream oss;
     oss << "TOML parse error at line " << e.source().begin.line << ": "
@@ -150,7 +232,19 @@ ConfigResult load_config(const std::filesystem::path &path) {
     read_field(t, "thread_max", c.thread_max);
   });
 
-  const auto base = std::filesystem::absolute(path).parent_path();
+  const std::filesystem::path config_dir =
+      std::filesystem::absolute(config).parent_path();
+  std::string raw_base;
+  if (auto v = tbl["base"].value<std::string>())
+    raw_base = *v;
+
+  std::filesystem::path base = config_dir;
+  if (!raw_base.empty())
+    base = resolve(config_dir, std::filesystem::path(raw_base));
+  std::error_code base_ec;
+  base = std::filesystem::absolute(base, base_ec).lexically_normal();
+  c.base = base;
+
   resolve_all(base, c.source_path, c.exe_path, c.exe_path_probe, c.work_dir,
               c.input_dir, c.output_dir, c.single_input, c.single_output,
               c.single_answer, c.result_root, c.answer_dir, c.inject_header);
@@ -160,14 +254,17 @@ ConfigResult load_config(const std::filesystem::path &path) {
 
   if (c.inject_probe && c.inject_header.empty()) {
     std::error_code ec;
-    const auto local = base / "include" / "inject" / "probe.h";
-    const auto tool = module_dir() / "include" / "inject" / "probe.h";
-    if (std::filesystem::exists(local, ec))
-      c.inject_header = local;
-    else if (!tool.empty() && std::filesystem::exists(tool, ec))
-      c.inject_header = tool;
+    const auto at_base = base / "include" / "inject" / "probe.h";
+    const auto at_config = config_dir / "include" / "inject" / "probe.h";
+    const auto at_tool = module_dir() / "include" / "inject" / "probe.h";
+    if (std::filesystem::exists(at_base, ec))
+      c.inject_header = at_base;
+    else if (std::filesystem::exists(at_config, ec))
+      c.inject_header = at_config;
+    else if (!at_tool.empty() && std::filesystem::exists(at_tool, ec))
+      c.inject_header = at_tool;
     else
-      c.inject_header = local;
+      c.inject_header = at_base;
   }
 
   if (!c.inject_probe)
