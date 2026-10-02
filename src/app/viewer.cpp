@@ -309,6 +309,7 @@ void apply(State &state, term::Key key, std::size_t height) {
   case term::Key::Quit:
   case term::Key::Resize:
   case term::Key::Backspace:
+  case term::Key::Text:
     return;
   }
 

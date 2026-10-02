@@ -8,6 +8,7 @@
 #include "store/detail/fields.hpp"
 #include "store/detail/files.hpp"
 #include "store/detail/index.hpp"
+#include "store/detail/layouts.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -24,18 +25,15 @@ namespace store {
 namespace {
 
 namespace fs = std::filesystem;
+using detail::kAnswerFile;
+using detail::kManifestFile;
+using detail::kOutputFile;
+using detail::kResultFile;
 using detail::Layout;
 using detail::Row;
 
-constexpr const char *kDir = "batch";
-constexpr const char *kManifestFile = "manifest.tsv";
-constexpr const char *kResultFile = "result.cmp";
-constexpr const char *kOutputFile = "output.txt";
-constexpr const char *kAnswerFile = "answer.txt";
-
-constexpr const char *kColumns =
-    "time\tlocal\tid\tcases\tmatched\tdiffer\tunusable";
-const Layout kLayout{kColumns, 7, 2, 0};
+constexpr const char *kDir = detail::kBatchDir;
+const Layout kLayout = detail::kBatchLayout;
 
 constexpr const char *kManifestColumns =
     "# name\tstate\tunmatched\tcase_id\tnote\n";

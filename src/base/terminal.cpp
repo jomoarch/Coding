@@ -133,7 +133,13 @@ void Session::write(std::string_view frame) const {
   raw_write(static_cast<HANDLE>(output_), frame);
 }
 
-bool Session::read(Key &out) const {
+bool Session::read(Key &out) const { return read_key(out, false, nullptr); }
+
+bool Session::read_any(Key &out, char32_t &text) const {
+  return read_key(out, true, &text);
+}
+
+bool Session::read_key(Key &out, bool raw, char32_t *text) const {
   const HANDLE in = static_cast<HANDLE>(input_);
   for (;;) {
     INPUT_RECORD record{};
@@ -152,6 +158,43 @@ bool Session::read(Key &out) const {
     const bool ctrl =
         (key.dwControlKeyState & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED)) != 0;
     const bool shift = (key.dwControlKeyState & SHIFT_PRESSED) != 0;
+
+    if (raw && text != nullptr) {
+      const wchar_t unit = key.uChar.UnicodeChar;
+
+      if (unit == 0x0A) {
+        out = Key::ViewDown;
+        return true;
+      }
+      if (unit == 0x0B) {
+        out = Key::ViewUp;
+        return true;
+      }
+      if (unit == 0x03) {
+        out = Key::Quit;
+        return true;
+      }
+
+      if (unit >= 0x20 && unit != 0x7F) {
+        char32_t codepoint = unit;
+        if (unit >= 0xD800 && unit <= 0xDBFF) {
+          INPUT_RECORD next{};
+          DWORD next_got = 0;
+          if (ReadConsoleInputW(in, &next, 1, &next_got) && next_got != 0 &&
+              next.EventType == KEY_EVENT &&
+              next.Event.KeyEvent.uChar.UnicodeChar >= 0xDC00 &&
+              next.Event.KeyEvent.uChar.UnicodeChar <= 0xDFFF) {
+            codepoint =
+                0x10000 + ((static_cast<char32_t>(unit) - 0xD800) << 10) +
+                (static_cast<char32_t>(next.Event.KeyEvent.uChar.UnicodeChar) -
+                 0xDC00);
+          }
+        }
+        *text = codepoint;
+        out = Key::Text;
+        return true;
+      }
+    }
 
     switch (key.wVirtualKeyCode) {
     case VK_UP:

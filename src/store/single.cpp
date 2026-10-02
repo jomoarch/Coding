@@ -6,6 +6,7 @@
 #include "store/detail/fields.hpp"
 #include "store/detail/files.hpp"
 #include "store/detail/index.hpp"
+#include "store/detail/layouts.hpp"
 
 #include <cstdint>
 #include <ctime>
@@ -19,19 +20,15 @@ namespace store {
 namespace {
 
 namespace fs = std::filesystem;
+using detail::kAnswerFile;
+using detail::kMetaFile;
+using detail::kOutputFile;
+using detail::kResultFile;
 using detail::Layout;
 using detail::Row;
 
-constexpr const char *kDir = "single";
-constexpr const char *kResultFile = "result.cmp";
-constexpr const char *kOutputFile = "output.txt";
-constexpr const char *kAnswerFile = "answer.txt";
-constexpr const char *kMetaFile = "meta.txt";
-
-constexpr const char *kColumns =
-    "name\ttime\tlocal\tid\tstatus\tunmatched\toutput_lines\texpect_lines";
-
-const Layout kLayout{kColumns, 8, 3, 1};
+constexpr const char *kDir = detail::kSingleDir;
+const Layout kLayout = detail::kSingleLayout;
 
 Row row_of(const Entry &entry) {
   return Row{entry.name,

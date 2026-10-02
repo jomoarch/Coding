@@ -37,6 +37,9 @@ struct AppConfig {
   std::filesystem::path single_answer;
   std::filesystem::path result_root;
   std::string single_name;
+  std::size_t single_max_count{0};
+  std::size_t batch_max_count{0};
+  std::size_t trash_max_bytes{0};
   bool colorize_output{true};
 
   // thread

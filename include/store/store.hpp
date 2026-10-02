@@ -111,6 +111,97 @@ struct PruneResult : ResultBase {
 [[nodiscard]] PruneResult prune_batch(const std::filesystem::path &root,
                                       std::size_t keep);
 
+struct PinEntry {
+  std::string id;
+  std::string name;
+};
+
+struct PinListResult : ResultBase {
+  std::vector<PinEntry> entries;
+};
+
+[[nodiscard]] PinListResult list_pins_single(const std::filesystem::path &root);
+[[nodiscard]] PinListResult list_pins_batch(const std::filesystem::path &root);
+
+[[nodiscard]] ResultBase pin_single(const std::filesystem::path &root,
+                                    const std::string &id);
+[[nodiscard]] ResultBase unpin_single(const std::filesystem::path &root,
+                                      const std::string &id);
+[[nodiscard]] ResultBase pin_batch(const std::filesystem::path &root,
+                                   const std::string &id);
+[[nodiscard]] ResultBase unpin_batch(const std::filesystem::path &root,
+                                     const std::string &id);
+
+struct TrashEntry {
+  std::string id;
+  std::string name;
+  std::string status;
+  std::int64_t time{0};
+  std::string local_time;
+  std::size_t unmatched{0};
+  std::size_t count{0};
+  std::int64_t trashed_time{0};
+  std::string trashed_local;
+};
+
+struct TrashListResult : ResultBase {
+  std::vector<TrashEntry> entries;
+  std::uintmax_t bytes{0};
+};
+
+[[nodiscard]] TrashListResult
+list_trash_single(const std::filesystem::path &root);
+[[nodiscard]] TrashListResult
+list_trash_batch(const std::filesystem::path &root);
+
+struct TrashMoveResult : ResultBase {
+  std::string name;
+};
+
+[[nodiscard]] TrashMoveResult trash_single(const std::filesystem::path &root,
+                                           const std::string &id);
+[[nodiscard]] TrashMoveResult trash_batch(const std::filesystem::path &root,
+                                          const std::string &id);
+
+[[nodiscard]] ResultBase restore_single(const std::filesystem::path &root,
+                                        const std::string &id);
+[[nodiscard]] ResultBase restore_batch(const std::filesystem::path &root,
+                                       const std::string &id);
+
+struct EraseResult : ResultBase {
+  std::size_t removed{0};
+  std::uintmax_t freed_bytes{0};
+};
+
+[[nodiscard]] EraseResult erase_trash_single(const std::filesystem::path &root,
+                                             const std::string &id);
+[[nodiscard]] EraseResult erase_trash_batch(const std::filesystem::path &root,
+                                            const std::string &id);
+[[nodiscard]] EraseResult empty_trash_single(const std::filesystem::path &root);
+[[nodiscard]] EraseResult empty_trash_batch(const std::filesystem::path &root);
+
+struct TrashLimitResult : ResultBase {
+  std::size_t removed{0};
+  std::uintmax_t freed_bytes{0};
+  std::uintmax_t bytes{0};
+};
+
+[[nodiscard]] TrashLimitResult
+limit_trash_single(const std::filesystem::path &root, std::uintmax_t max_bytes);
+[[nodiscard]] TrashLimitResult
+limit_trash_batch(const std::filesystem::path &root, std::uintmax_t max_bytes);
+
+struct CountLimitResult : ResultBase {
+  std::size_t moved{0};
+};
+
+[[nodiscard]] CountLimitResult
+enforce_single_limit(const std::filesystem::path &root,
+                     std::size_t max_unprotected);
+[[nodiscard]] CountLimitResult
+enforce_batch_limit(const std::filesystem::path &root,
+                    std::size_t max_unprotected);
+
 } // namespace store
 
 #endif // STORE_HPP

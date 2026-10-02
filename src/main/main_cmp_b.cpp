@@ -1,3 +1,4 @@
+#include "app/manager.hpp"
 #include "app/prompt.hpp"
 #include "app/viewer.hpp"
 #include "base/color.hpp"
@@ -179,11 +180,15 @@ int main(int argc, char **argv) {
       std::cerr << color::err("[save] ", saved.message) << "\n";
       code = 2;
     } else {
+      std::string note;
+      manager::enforce_limits(cfg, true, &note);
       std::cout << color::ok("[save] ",
                              saved.reused ? "already archived, time refreshed: "
                                           : "archived: ",
                              saved.archived, " result(s) -> ", saved.id)
                 << "\n";
+      if (!note.empty())
+        std::cout << color::info("[save] ", note) << "\n";
     }
   }
 

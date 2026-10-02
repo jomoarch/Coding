@@ -63,6 +63,15 @@ single_output = "test/output"
 # Optional. Name to file a single comparison under; defaults to the file name of
 # [io].single_input.
 # single_name = "frog1"
+# Optional. How many records each archive may keep; protected records are not
+# counted. 0 means no limit. When a new record pushes a store over its limit,
+# the oldest unprotected record is moved to the trash.
+# single_max_count = 20
+# batch_max_count = 10
+# Optional. How many bytes the trash may hold. When it goes over, the record
+# that has been in the trash longest is deleted for good; nothing is ever
+# compressed. 0 empties the trash on sight.
+# trash_max_bytes = 1000000000
 # Optional. Directory holding the expected answers for a batch comparison,
 # matched to each test case by name. Either <name>.ans or <name>.out is used,
 # and .ans wins when both exist; the program's own output is always <name>.out.

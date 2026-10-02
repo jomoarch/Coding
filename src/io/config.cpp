@@ -138,6 +138,9 @@ ConfigResult load_config(const std::filesystem::path &path) {
     read_field(t, "single_answer", c.single_answer);
     read_field(t, "result_root", c.result_root);
     read_field(t, "single_name", c.single_name);
+    read_field(t, "single_max_count", c.single_max_count);
+    read_field(t, "batch_max_count", c.batch_max_count);
+    read_field(t, "trash_max_bytes", c.trash_max_bytes);
     read_field(t, "answer_dir", c.answer_dir);
     read_field(t, "colorize_output", c.colorize_output);
   });

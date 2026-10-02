@@ -38,6 +38,8 @@ set(APP_SOURCES
   src/app/app.cpp
   src/app/builder.cpp
   src/app/formatter.cpp
+  src/app/list_view.cpp
+  src/app/manager.cpp
   src/app/modes.cpp
   src/app/prompt.cpp
   src/app/viewer.cpp
@@ -54,6 +56,8 @@ set(STORE_SOURCES
   src/store/files.cpp
   src/store/archive.cpp
   src/store/index.cpp
+  src/store/manage.cpp
+  src/store/manage_library.cpp
   src/store/single.cpp
   src/store/batch.cpp
 )
@@ -108,3 +112,9 @@ add_coding_app(cmp_s      src/main/main_cmp_s.cpp)
 add_coding_app(cmp_b      src/main/main_cmp_b.cpp)
 add_coding_app(view_s     src/main/main_view_s.cpp)
 add_coding_app(view_b     src/main/main_view_b.cpp)
+add_coding_app(rman_s     src/main/main_rman_s.cpp)
+add_coding_app(rman_b     src/main/main_rman_b.cpp)
+add_coding_app(tman_s     src/main/main_tman_s.cpp)
+add_coding_app(tman_b     src/main/main_tman_b.cpp)
+add_coding_app(pin_s      src/main/main_pin_s.cpp)
+add_coding_app(pin_b      src/main/main_pin_b.cpp)

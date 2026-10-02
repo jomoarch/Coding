@@ -12,8 +12,9 @@ cmake -S . -B build
 cmake --build build --config Release
 ```
 
-八个可执行文件会直接生成在 `bin/`：`cg_b.exe`、`cg_s.exe`、`cg_i.exe`、`clean_dir.exe`、
-`cmp_s.exe`、`cmp_b.exe`、`view_s.exe`、`view_b.exe`。
+十四个可执行文件会直接生成在 `bin/`：`cg_b.exe`、`cg_s.exe`、`cg_i.exe`、`clean_dir.exe`、
+`cmp_s.exe`、`cmp_b.exe`、`view_s.exe`、`view_b.exe`、`rman_s.exe`、`rman_b.exe`、`tman_s.exe`、
+`tman_b.exe`、`pin_s.exe`、`pin_b.exe`。
 
 ## 三种模式
 
@@ -125,6 +126,32 @@ stderr 都进同一个 `*.out`。
 `view_s` / `view_b` 另有 `--list`、`--id` / `--run <id>`、`--prune --keep <n>`（手工清理，会先列出
 要删的东西再问一次，永远不会自动删）。退出码 `0` 一致、`1` 不一致、`2` 配置或 IO 出错。
 
+## 记录管理
+
+六个交互式工具，`_s` 管单次比较库、`_b` 管批量 run 库：
+
+| 工具 | 干什么 |
+| --- | --- |
+| `rman_s` / `rman_b` | 列出所有存档记录：`Enter` 进去看（就是 `view_s` / `view_b` 的浏览），`d` 删除（进回收站），`p` 加入保护名单，`Shift+p` 取消保护 |
+| `tman_s` / `tman_b` | 回收站：`r` 恢复，`d` 彻底删除，`Shift+d` 全部清空 |
+| `pin_s` / `pin_b` | 保护名单：`d` 把某条记录从名单里去掉 |
+
+三个工具同一套界面：**最上面一行是状态**（库、条数、保护数、上限、当前过滤/排序），中间是列表
+（`j` / `k` 或方向键移动，`Ctrl+j` / `Ctrl+k` 只滚视野，光标行反色），**最下面一行始终留给命令输入**：
+
+- `:` 进入输入，`Enter` 执行，`Esc` 取消这次输入；输入状态下 `j` / `k` / `q` 都是普通字符。
+- 命令：`help`、`find <文本>`（按名字或 id 过滤，空则显示全部）、`sort time|name|unmatched`、
+  `pin <id>` / `unpin <id>`、`del <id>`（记录库里是送回收站，回收站里是彻底删除）、`restore <id>`。
+- 任何界面下 `q` / `Esc` / `Ctrl+C` 都是强制退出。
+
+**删除与恢复**：删除只是把记录移进 `<result_root>/.trash/<s|b>/`，**记录自己的名字、时间、状态、
+计数一个都不变**，只额外记下进入回收站的时间；恢复时按**原来的时间**插回索引，所以它会回到原来的
+位置，而不是跑到最上面。被保护的记录不参与数量上限的自动淘汰，但一样可以被 `d` 删掉（删了也能恢复）。
+
+**两个上限**（都读 `config.toml`）：`[io].single_max_count` / `[io].batch_max_count` 限制每个库存
+多少条（保护的不计入，超了把**最旧的未保护记录**送进回收站，在存档、恢复、取消保护后都会检查一次）；
+`[io].trash_max_bytes` 限制回收站占多少字节，超了就**删掉最早进回收站的**——只删不压缩，行为只有一种。
+
 ## 用法
 
 ```sh
@@ -174,5 +201,8 @@ cg_b --help
 | `[io].single_answer` | `cmp_s` | 要比对的期望答案；只影响比较，编译与运行不需要它 |
 | `[io].result_root` | `cmp_s` `cmp_b` `view_s` `view_b` | 比较结果仓库：`<root>/single` 存单次比较，`<root>/batch` 存批量 run |
 | `[io].single_name` | `cmp_s` | 存档时用的名字；缺省取 `[io].single_input` 的文件名 |
+| `[io].single_max_count` | `cmp_s` `rman_s` | 单次比较库最多留多少条（保护的不计入，0 为不限） |
+| `[io].batch_max_count` | `cmp_b` `rman_b` | 批量库最多留多少个 run（同上） |
+| `[io].trash_max_bytes` | 全部管理工具 | 回收站最多占多少字节，超了删最早进的（0 表示一进来就清） |
 | `[io].colorize_output` | `cg_s` / `cg_i` | 是否给程序自身输出染色（默认 `true`）|
 | `[thread].thread_max` | `cg_b` | 并发测试点数，同时受 CPU 核心数限制 |

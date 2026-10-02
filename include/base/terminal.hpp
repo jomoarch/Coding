@@ -21,6 +21,7 @@ enum class Key {
   CollapseAll,
   Quit,
   Resize,
+  Text
 };
 
 struct Size {
@@ -43,9 +44,14 @@ public:
 
   Size size() const;
   void write(std::string_view frame) const;
+
   bool read(Key &out) const;
 
+  bool read_any(Key &out, char32_t &text) const;
+
 private:
+  bool read_key(Key &out, bool raw, char32_t *text) const;
+
   void *input_{nullptr};
   void *output_{nullptr};
   unsigned long saved_input_mode_{0};
