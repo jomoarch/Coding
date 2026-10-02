@@ -1,109 +1,38 @@
-# Every key here is optional. Loading only reads the file and fills in defaults;
-# each tool then checks the fields it actually needs, so a config that serves
-# just one of them is fine.
-#
-# Relative paths below start at `base`. To share one config between several
-# copies of the tools, keep this file wherever you like and leave a one line
-# config.link next to the .exe holding its path:
-#
-#   bin/config.link  ->  D:\oj\my-config.toml
-#
-# config.link is not TOML: the first line that is not blank and does not start
-# with '#' is the path of a config file, absolute or relative to the directory
-# holding config.link. Spaces around it, surrounding quotes and a UTF-8 BOM are
-# ignored, so pasting Explorer's "copy as path" works as it is.
-#
-# A tool looks for, in order: the path given with -c (or config.toml in the
-# current directory), then config.toml next to the .exe, then that link. A real
-# symlink named config.toml next to the .exe needs no link file at all, because
-# Windows resolves it before anything here sees it.
+# 所有键都是可选的，这里把能写的都写出来，按需改值即可；用不到的键删掉也一样
+# 相对路径都以 `base` 为起点。
+# 想把这份配置放在别处复用，就在 .exe 旁边放一个 config.link（内容是一行路径）
+# `base`、`config.link` 和每个键的细节见 README 的「配置」
 
-# Optional. Every relative path in this file is resolved against this. It may be
-# absolute, or relative (a relative one starts at the directory of this file).
-# Without it, paths resolve against that directory, which is what they always
-# did.
-# base = "D:/oj/my-problem"
+base = "."
 
 [compiler]
-# Used by cg_b / cg_s / cg_i. The solution to compile.
 source = "test/src/solution.cpp"
-# Used by cg_b (and by cg_s / cg_i when injection is off). Where the plain
-# executable is written; nothing is injected into this build.
 output = "test/bin/solution.exe"
-# Optional. Where the probe executable is written; used by cg_s / cg_i. These
-# two modes need a second binary because include/inject/probe.h is forced into
-# the translation unit, and cg_b must not see it. Defaults to `output` with
-# ".probe" before the extension, i.e. test/bin/solution.probe.exe. Must differ
-# from `output`.
-# output_probe = "test/bin/solution.probe.exe"
-# Optional. Full compiler command line; the source and "-o <output>" are
-# appended automatically. Defaults to "g++ -std=c++17".
-args = ["g++", "-std=c++17", "-O2", "-Wall", "-Wextra"]
+output_probe = "test/bin/solution.probe.exe"
+args = ["g++", "-std=c++17", "-O2", "-Wall", "-Wextra"] # 源码与 -o <output> 会自动追加
 
 [inject]
-# Optional. Inject the probe header into the cg_s / cg_i build so stdout and
-# stderr come back framed on one stream and can be split without losing the
-# order in which the program produced them. Set to false to drop back to two
-# independent pipes, which is faster to build but cannot preserve that order.
-enabled = true
-# Optional. Header forced into that build (g++/clang++: -include, cl.exe: /FI).
-# Defaults to include/inject/probe.h next to this config file, falling back to
-# the directory holding cg_*.exe. It is also a build dependency: touching it
-# invalidates the probe executable.
-# header = "include/inject/probe.h"
+enabled = true                    # 关掉就不需要下面的头文件
+header = "include/inject/probe.h" # 删掉这行就自动去 base、配置目录、exe 目录找
 
 [runner]
-# Used by cg_b / cg_s / cg_i. Working directory for every run; each test case
-# also gets its own subdirectory (t0, t1, ...) underneath it.
-work_dir = "test/work"
-# Strongly recommended. Without it a runaway program is never killed.
-time_limit_ms = 1000
-# Optional. 0 disables the memory limit.
-memory_limit_mb = 256
+work_dir = "test/work" # 每个测试点还会在它下面各占一个子目录
+time_limit_ms = 1000   # CPU_time 上限；删掉这行或设置为 0 就永远不杀超时程序
+memory_limit_mb = 256  # 0 = 不限
 
 [io]
-# Used by cg_b (and by cmp_b / clean_dir). Directory holding the *.in test
-# cases.
-input_dir = "test/in"
-# Used by cg_b (and by cmp_b / clean_dir). Directory receiving the produced
-# *.out files.
-#
-# NOTE: every existing entry in this directory is deleted recursively before a
-# batch run, so never point this at a directory holding expected answers.
-output_dir = "test/out"
-# Used by cg_s only.
-single_input = "test/input"
-# Used by cg_s / cg_i to offer saving the captured output.
-single_output = "test/output"
-# Optional. Expected answer compared against [io].single_output. Not needed to
-# compile or run; a missing value only fails once a comparison is attempted.
-# single_answer = "test/exc/solution.out"
-# Optional. The archive of comparisons. cmp_s / view_s use <root>/single (one
-# folder per comparison, named after the SHA-256 of what is inside), cmp_b /
-# view_b use <root>/batch (one folder per run). Not needed to compile or run.
-# result_root = "test/results"
-# Optional. Name to file a single comparison under; defaults to the file name of
-# [io].single_input.
-# single_name = "frog1"
-# Optional. How many records each archive may keep; protected records are not
-# counted. 0 means no limit. When a new record pushes a store over its limit,
-# the oldest unprotected record is moved to the trash.
-# single_max_count = 20
-# batch_max_count = 10
-# Optional. How many bytes the trash may hold. When it goes over, the record
-# that has been in the trash longest is deleted for good; nothing is ever
-# compressed. 0 empties the trash on sight.
-# trash_max_bytes = 1000000000
-# Optional. Directory holding the expected answers for a batch comparison,
-# matched to each test case by name. Either <name>.ans or <name>.out is used,
-# and .ans wins when both exist; the program's own output is always <name>.out.
-# Not needed to compile or run; a missing value only fails once a comparison is
-# attempted.
-# answer_dir = "test/exc"
-# Render the program's own output in cg_s / cg_i: stdout green, stderr red.
-# Ignored when the terminal cannot do colour (redirected output, NO_COLOR).
-colorize_output = true
+input_dir = "test/in"                   # 存放 *.in 的目录
+output_dir = "test/out"                 # 存放 *.out 的目录；cg_b 开跑前会清空它
+single_input = "test/input"             # cg_s 的输入
+single_output = "test/output"           # cg_s / cg_i 落盘的位置，也是 cmp_s 比的一侧
+single_answer = "test/exc/solution.out" # cmp_s 的期望答案
+answer_dir = "test/exc"                 # cmp_b 的期望答案目录，<name>.ans 优先于 <name>.out
+result_root = "test/results"            # 比较结果仓库：<root>/single 与 <root>/batch
+single_name = ""                        # 存档用的名字；留空 = 取 single_input 的文件名
+single_max_count = 0                    # 单次比较库最多留几条；0 = 不限，保护的不计入
+batch_max_count = 0                     # 批量库最多留多少个 run；0 = 不限
+trash_max_bytes = 0                     # 回收站最多占多少字节；0 = 不限，超了删最早进的
+colorize_output = true                  # cg_s / cg_i 里 stdout 绿、stderr 红
 
 [thread]
-# Optional. Maximum concurrent test cases; also capped by the CPU count.
-thread_max = 4
+thread_max = 4 # cg_b 的并发测试点数；同时受 CPU 核心数限制

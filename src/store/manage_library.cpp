@@ -319,10 +319,12 @@ TrashLimitResult limit_trash(const fs::path &root, const Spec &spec,
   }
 
   out.bytes = detail::id_folders_bytes(dir);
-  if (max_bytes == 0)
-    max_bytes = 0;
+  if (max_bytes == 0) {
+    out.success = true;
+    return out;
+  }
 
-  while (!rows.empty() && (max_bytes == 0 || out.bytes > max_bytes)) {
+  while (!rows.empty() && out.bytes > max_bytes) {
     const Row &oldest = rows.back();
     const fs::path folder = dir / oldest[spec.trash.id_column];
 

@@ -177,7 +177,7 @@ cmake --build build --config Release
 - `[io].single_max_count` / `[io].batch_max_count`：每个库最多留多少条（保护的不计入）。超了把
   **最旧的未保护记录**送进回收站；在**存档、恢复、取消保护**之后都会检查一次。
 - `[io].trash_max_bytes`：回收站最多占多少字节。超了就**删掉最早进回收站的**——只删不压缩，行为
-  只有一种；`0` 表示一进回收站就清掉。
+  只有一种；`0` 表示不限（和上面两个计数键一致）。
 
 ## 按键速查
 
@@ -296,6 +296,6 @@ view_b --prune --keep 3   # 手工清理，只留最新 3 条
 | `[io].single_name` | `cmp_s` | 存档时用的名字；缺省取 `[io].single_input` 的文件名 |
 | `[io].single_max_count` | `cmp_s` `rman_s` | 单次比较库最多留多少条（保护的不计入，`0` 为不限） |
 | `[io].batch_max_count` | `cmp_b` `rman_b` | 批量库最多留多少个 run（同上） |
-| `[io].trash_max_bytes` | `tman_*` 及其余管理工具 | 回收站最多占多少字节，超了删最早进的（`0` 表示一进来就清） |
+| `[io].trash_max_bytes` | `tman_*` 及其余管理工具 | 回收站最多占多少字节，超了删最早进的（`0` 表示不限） |
 | `[io].colorize_output` | `cg_s` / `cg_i` | 是否给程序自身输出染色（默认 `true`） |
 | `[thread].thread_max` | `cg_b` | 并发测试点数，同时受 CPU 核心数限制 |
