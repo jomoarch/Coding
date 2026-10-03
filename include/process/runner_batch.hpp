@@ -17,6 +17,7 @@ struct BatchOptions {
   std::chrono::milliseconds time_limit{0};
   std::size_t memory_limit_bytes{0};
   std::size_t thread_max{1};
+  bool merge_stderr{true};
 };
 
 struct ResultUnit {

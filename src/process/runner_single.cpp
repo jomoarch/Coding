@@ -49,7 +49,7 @@ void write_styled(bool colorize, const color::Style *style, const char *data,
 
 void pump_both(HANDLE hOut, HANDLE hErr, bool echo, bool colorize,
                const color::Style *out_style, const color::Style *err_style,
-               std::string *out_sink) {
+               std::string *out_sink, bool merge_err) {
   HANDLE handles[2] = {hOut, hErr};
   const color::Style *styles[2] = {out_style, err_style};
   bool alive[2] = {true, true};
@@ -84,7 +84,7 @@ void pump_both(HANDLE hOut, HANDLE hErr, bool echo, bool colorize,
       continue;
     }
 
-    if (i == 0 && out_sink)
+    if (out_sink && (i == 0 || merge_err))
       out_sink->append(buf.data(), n);
 
     if (!echo)
@@ -97,9 +97,10 @@ void pump_both(HANDLE hOut, HANDLE hErr, bool echo, bool colorize,
 class TagSplitter {
 public:
   TagSplitter(bool echo, bool colorize, const color::Style *out_style,
-              const color::Style *err_style, std::string *out_sink)
+              const color::Style *err_style, std::string *out_sink,
+              bool merge_err)
       : echo_(echo), colorize_(colorize), out_style_(out_style),
-        err_style_(err_style), out_sink_(out_sink) {}
+        err_style_(err_style), out_sink_(out_sink), merge_err_(merge_err) {}
 
   void feed(const char *data, std::size_t n) {
     bytes_ += n;
@@ -124,6 +125,8 @@ public:
 private:
   void emit(const char *data, std::size_t n) {
     if (current_ == kFramedStderr) {
+      if (merge_err_ && out_sink_)
+        out_sink_->append(data, n);
       if (echo_)
         write_styled(colorize_, err_style_, data, n);
       return;
@@ -140,6 +143,7 @@ private:
   const color::Style *out_style_;
   const color::Style *err_style_;
   std::string *out_sink_;
+  bool merge_err_;
   char current_{kFramedStdout};
   bool saw_tag_{false};
   std::size_t bytes_{0};
@@ -351,7 +355,7 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   std::string captured;
   std::string raw_err;
   TagSplitter splitter(opts.echo, opts.colorize_output, &stdout_style,
-                       &stderr_style, &captured);
+                       &stderr_style, &captured, opts.merge_stderr);
 
   std::thread pump;
   if (opts.tagged_stream)
@@ -360,33 +364,53 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   else
     pump = std::thread(pump_both, hOutRead.get(), hErrRead.get(), opts.echo,
                        opts.colorize_output, &stdout_style, &stderr_style,
-                       &captured);
+                       &captured, opts.merge_stderr);
 
   if (opts.stdin_from_console && stdin_is_console && hStdinWrite.valid()) {
     stdin_forwarder = std::thread([&]() {
       std::vector<char> fbuf(4096);
-      while (!stdin_stop.load(std::memory_order_relaxed)) {
+      std::vector<char> batch;
+
+      constexpr DWORD kIdleMs = 15;
+      constexpr std::size_t kMaxBatch = 256 * 1024;
+
+      bool closed = false;
+      while (!closed && !stdin_stop.load(std::memory_order_relaxed)) {
         DWORD r = ::WaitForSingleObject(hConsoleIn, 50);
         if (r == WAIT_TIMEOUT)
           continue;
         if (r != WAIT_OBJECT_0)
           break;
 
-        DWORD n = 0;
-        if (!::ReadFile(hConsoleIn, fbuf.data(),
-                        static_cast<DWORD>(fbuf.size()), &n, nullptr) ||
-            n == 0)
-          break;
+        batch.clear();
+        for (;;) {
+          DWORD n = 0;
+          if (!::ReadFile(hConsoleIn, fbuf.data(),
+                          static_cast<DWORD>(fbuf.size()), &n, nullptr) ||
+              n == 0) {
+            closed = true;
+            break;
+          }
+          batch.insert(batch.end(), fbuf.begin(), fbuf.begin() + n);
+
+          if (batch.size() >= kMaxBatch)
+            break;
+          if (::WaitForSingleObject(hConsoleIn, kIdleMs) != WAIT_OBJECT_0)
+            break;
+        }
+        if (batch.empty())
+          continue;
 
         {
           std::lock_guard<std::mutex> lock(g_console_mutex);
-          std::cout.write(fbuf.data(), static_cast<std::streamsize>(n));
+          std::cout.write(batch.data(),
+                          static_cast<std::streamsize>(batch.size()));
           std::cout.flush();
         }
 
         DWORD written = 0;
-        if (!::WriteFile(hStdinWrite.get(), fbuf.data(), n, &written,
-                         nullptr) ||
+        if (!::WriteFile(hStdinWrite.get(), batch.data(),
+                         static_cast<DWORD>(batch.size()), &written, nullptr) ||
             written == 0)
           break;
       }

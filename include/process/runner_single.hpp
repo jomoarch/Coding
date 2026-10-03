@@ -17,6 +17,8 @@ struct SingleRunOption {
   bool colorize_output{false};
 
   bool tagged_stream{false};
+
+  bool merge_stderr{false};
 };
 
 struct SingleRunResult {

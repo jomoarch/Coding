@@ -48,7 +48,9 @@ RunnerResult run_exe(const RunnerOptions &opts) {
   po.work_dir = opts.work_dir;
   po.stdin_handle = hIn.valid() ? hIn.get() : INVALID_HANDLE_VALUE;
   po.stdout_handle = hOut.valid() ? hOut.get() : INVALID_HANDLE_VALUE;
-  po.stderr_handle = hOut.valid() ? hOut.get() : INVALID_HANDLE_VALUE;
+
+  po.stderr_handle =
+      hOut.valid() && opts.merge_stderr ? hOut.get() : INVALID_HANDLE_VALUE;
   po.time_limit = opts.time_limit;
   po.memory_limit_bytes = opts.memory_limit_bytes;
   po.no_window = true;

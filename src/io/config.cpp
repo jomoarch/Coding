@@ -239,6 +239,8 @@ ConfigResult load_config(const std::filesystem::path &path) {
     read_field(t, "single_max_count", c.single_max_count);
     read_field(t, "batch_max_count", c.batch_max_count);
     read_field(t, "trash_max_bytes", c.trash_max_bytes);
+    read_field_as<bool>(t, "merge_stderr", c.merge_stderr,
+                        [](bool v) { return v ? 1 : 0; });
     read_field(t, "answer_dir", c.answer_dir);
     read_field(t, "colorize_output", c.colorize_output);
   });

@@ -33,6 +33,7 @@ single_max_count = 0                    # 单次比较库最多留几条；0 = �
 batch_max_count = 0                     # 批量库最多留多少个 run；0 = 不限
 trash_max_bytes = 0                     # 回收站最多占多少字节；0 = 不限，超了删最早进的
 colorize_output = true                  # cg_s / cg_i 里 stdout 绿、stderr 红
+merge_stderr = false                    # 是否把 stderr 也写进输出文件
 
 [thread]
 thread_max = 4 # cg_b 的并发测试点数；同时受 CPU 核心数限制

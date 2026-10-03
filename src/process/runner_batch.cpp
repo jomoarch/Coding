@@ -35,6 +35,7 @@ std::vector<ResultUnit> run_all(const BatchOptions &opts) {
         ro.work_dir = opts.work_dir / ("t" + std::to_string(i));
         ro.input_path = p.input_path;
         ro.output_path = p.output_path;
+        ro.merge_stderr = opts.merge_stderr;
         ro.time_limit = opts.time_limit;
         ro.memory_limit_bytes = opts.memory_limit_bytes;
 

@@ -76,11 +76,25 @@ cmake --build build --config Release
    写进**同一条**带标记的流：`\x01` 表示 stdout、`\x02` 表示 stderr，且只在流切换时打一次标记。
 2. **运行期**：`cg` 解析这条流，把字节还原成两路——顺序天然就是程序产生的顺序。
 
-于是 `cg_s` / `cg_i` 里 stdout 绿色、stderr 红色，像终端里那样正确交织；而 `[io].single_output`
-保存的仍然只有 stdout。`cg_b` 不注入，行为与以前一致：stdout 与 stderr 都进同一个 `*.out`。
+于是 `cg_s` / `cg_i` 里 stdout 绿色、stderr 红色，像终端里那样正确交织。
 
 不想注入就用 `[inject].enabled = false`：`cg_s` / `cg_i` 退回去用原版程序加两条独立管道，顺序不再有
 保证，但编译更快。
+
+### stderr 要不要进输出文件
+
+`[io].merge_stderr` 决定保存下来的输出文件里是否也包含 stderr：
+
+| 取值 | 效果 |
+| --- | --- |
+| `true` | stderr 也写进输出文件。注入版下两路在同一流里，**顺序和程序写的一致**；没注入时来自两条管道，顺序不保证 |
+| `false` | 输出文件只存 stdout；stderr 直接打到终端，不会丢 |
+| 不写 | 各自维持原来的样子：`cg_b` 合并进 `*.out`，`cg_s` / `cg_i` 只存 stdout |
+
+### 交互模式下的粘贴
+
+`cg_i` 会等一次粘贴**整块到齐**再交给程序（约 15 ms 的空闲判定），而不是来一行喂一行。否则粘贴
+`A`↵`B` 时程序可能读完 `A` 就输出没有换行的 `C`，把 `B` 顶到 `C` 后面去。手工输入不受影响。
 
 ## 比较：`cmp_*`
 
@@ -298,4 +312,5 @@ view_b --prune --keep 3   # 手工清理，只留最新 3 条
 | `[io].batch_max_count` | `cmp_b` `rman_b` | 批量库最多留多少个 run（同上） |
 | `[io].trash_max_bytes` | `tman_*` 及其余管理工具 | 回收站最多占多少字节，超了删最早进的（`0` 表示不限） |
 | `[io].colorize_output` | `cg_s` / `cg_i` | 是否给程序自身输出染色（默认 `true`） |
+| `[io].merge_stderr` | `cg_*` | 是否把 stderr 也写进输出文件；不写就各自维持现状（见上文「stderr 要不要进输出文件」） |
 | `[thread].thread_max` | `cg_b` | 并发测试点数，同时受 CPU 核心数限制 |

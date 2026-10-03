@@ -194,6 +194,7 @@ int run_interactive(const AppConfig &cfg) {
   opt.echo = true;
   opt.colorize_output = cfg.colorize_output;
   opt.tagged_stream = uses_probe_build(cfg);
+  opt.merge_stderr = cfg.merge_stderr == 1;
 
   return finish_single(cfg, run_single(opt));
 }
@@ -237,6 +238,7 @@ int run_single_file(const AppConfig &cfg) {
   opt.echo = true;
   opt.colorize_output = cfg.colorize_output;
   opt.tagged_stream = uses_probe_build(cfg);
+  opt.merge_stderr = cfg.merge_stderr == 1;
 
   return finish_single(cfg, run_single(opt));
 }
@@ -296,6 +298,7 @@ int run_batch(const AppConfig &cfg) {
   batch.time_limit = cfg.time_limit;
   batch.memory_limit_bytes = cfg.memory_limit_bytes;
   batch.thread_max = cfg.thread_max;
+  batch.merge_stderr = cfg.merge_stderr < 0 || cfg.merge_stderr == 1;
 
   auto results = run_all(batch);
 

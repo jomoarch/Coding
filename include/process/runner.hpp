@@ -15,6 +15,8 @@ struct RunnerOptions {
   std::filesystem::path input_path;
   std::filesystem::path output_path;
 
+  bool merge_stderr{true};
+
   std::chrono::milliseconds time_limit{0};
   std::size_t memory_limit_bytes{0};
 };
