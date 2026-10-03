@@ -263,6 +263,9 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   std::thread stdin_forwarder;
   std::atomic<bool> stdin_stop{false};
 
+  DWORD saved_console_mode = 0;
+  bool console_mode_saved = false;
+
   if (opts.stdin_from_console) {
     hConsoleIn = GetStdHandle(STD_INPUT_HANDLE);
     if (hConsoleIn == nullptr || hConsoleIn == INVALID_HANDLE_VALUE) {
@@ -273,7 +276,9 @@ SingleRunResult run_single(const SingleRunOption &opts) {
     stdin_is_console = GetConsoleMode(hConsoleIn, &mode) != FALSE;
 
     if (stdin_is_console) {
-      SetConsoleMode(hConsoleIn, mode & ~ENABLE_ECHO_INPUT);
+      saved_console_mode = mode;
+      console_mode_saved =
+          SetConsoleMode(hConsoleIn, mode | ENABLE_ECHO_INPUT) != FALSE;
 
       HANDLE r = INVALID_HANDLE_VALUE;
       HANDLE w = INVALID_HANDLE_VALUE;
@@ -401,13 +406,8 @@ SingleRunResult run_single(const SingleRunOption &opts) {
         if (batch.empty())
           continue;
 
-        {
-          std::lock_guard<std::mutex> lock(g_console_mutex);
-          std::cout.write(batch.data(),
-                          static_cast<std::streamsize>(batch.size()));
-          std::cout.flush();
-        }
-
+        // No echo here: the console already echoed it as it was typed, and
+        // echoing again would print every line twice.
         DWORD written = 0;
         if (!::WriteFile(hStdinWrite.get(), batch.data(),
                          static_cast<DWORD>(batch.size()), &written, nullptr) ||
@@ -440,11 +440,8 @@ SingleRunResult run_single(const SingleRunOption &opts) {
 
   pump.join();
 
-  if (stdin_is_console && hConsoleIn != INVALID_HANDLE_VALUE) {
-    DWORD mode = 0;
-    if (GetConsoleMode(hConsoleIn, &mode))
-      SetConsoleMode(hConsoleIn, mode | ENABLE_ECHO_INPUT);
-  }
+  if (console_mode_saved && hConsoleIn != INVALID_HANDLE_VALUE)
+    SetConsoleMode(hConsoleIn, saved_console_mode);
 
   hOutRead.reset();
   hErrRead.reset();
