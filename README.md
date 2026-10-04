@@ -56,8 +56,10 @@ cmake --build build --config Release
 | `cg_s` | single | 编译一次，用 `[io].single_input` 作为输入跑一次 |
 | `cg_i` | interactive | 编译一次，直接在控制台里交互运行（stdin 接到你的键盘） |
 
-三种模式都会重定向 stdout 与 stderr；`cg_i` 之外的模式不会在终端回显程序输出，输出只落盘到对应的
-`*.out`。
+三种模式都会重定向 stdout 与 stderr。`cg_b` 不回显程序输出，结果只落盘到对应的 `*.out`；`cg_s` 和
+`cg_i` 会在终端回显。`cg_s` 的回显以 `--- output ---` 开头，想连输入一起看就把 `[io].print_input`
+打开——那样会先打 `--- input ---` 和输入内容，再打输出，两者各占一块，输入末尾没有换行也不会粘在
+一起。
 
 ### 为什么有两份可执行文件
 
@@ -312,4 +314,5 @@ view_b --prune --keep 3   # 手工清理，只留最新 3 条
 | `[io].trash_max_bytes` | `tman_*` 及其余管理工具 | 回收站最多占多少字节，超了删最早进的（`0` 表示不限） |
 | `[io].colorize_output` | `cg_s` / `cg_i` | 是否给程序自身输出染色（默认 `true`） |
 | `[io].merge_stderr` | `cg_*` | 是否把 stderr 也写进输出文件；不写就各自维持现状（见上文「stderr 要不要进输出文件」） |
+| `[io].print_input` | `cg_s` | 回显时是否先把输入打出来；默认 `false`（只打输出） |
 | `[thread].thread_max` | `cg_b` | 并发测试点数，同时受 CPU 核心数限制 |

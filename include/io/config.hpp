@@ -42,8 +42,8 @@ struct AppConfig {
   std::size_t single_max_count{0};
   std::size_t batch_max_count{0};
   std::size_t trash_max_bytes{0};
-  // -1 not configured (each mode keeps what it always did), 0 no, 1 yes.
   int merge_stderr{-1};
+  bool print_input{false};
   bool colorize_output{true};
 
   // thread

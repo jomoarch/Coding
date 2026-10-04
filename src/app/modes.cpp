@@ -228,7 +228,15 @@ int run_single_file(const AppConfig &cfg) {
   const std::size_t input_size = input.size();
   std::cout << color::ok("[io] input <- ", cfg.single_input, " (", input_size,
                          input_size == 1 ? " byte" : " bytes", ")")
-            << "\n\n--- output ---\n";
+            << "\n";
+
+  if (cfg.print_input) {
+    std::cout << "--- input ---\n" << input;
+    if (!input.empty() && input.back() != '\n')
+      std::cout << "\n";
+  }
+
+  std::cout << "\n--- output ---\n";
 
   SingleRunOption opt;
   opt.exe_path = cfg.exe_path_probe;

@@ -242,6 +242,7 @@ ConfigResult load_config(const std::filesystem::path &path) {
     read_field_as<bool>(t, "merge_stderr", c.merge_stderr,
                         [](bool v) { return v ? 1 : 0; });
     read_field(t, "answer_dir", c.answer_dir);
+    read_field(t, "print_input", c.print_input);
     read_field(t, "colorize_output", c.colorize_output);
   });
 
