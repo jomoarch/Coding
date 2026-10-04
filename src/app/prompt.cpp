@@ -103,6 +103,13 @@ bool should_pause(int pause) noexcept {
   return count <= 1;
 }
 
+bool interactive_stdin() noexcept {
+  HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+  DWORD mode = 0;
+  return hIn != nullptr && hIn != INVALID_HANDLE_VALUE &&
+         GetConsoleMode(hIn, &mode) != FALSE;
+}
+
 void pause_if_needed(int pause) {
   if (!should_pause(pause))
     return;

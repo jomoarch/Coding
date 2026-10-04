@@ -3,6 +3,7 @@
 #include "app/builder.hpp"
 #include "app/formatter.hpp"
 #include "app/prompt.hpp"
+#include "app/stale_exe.hpp"
 #include "io/iofile.hpp"
 #include "process/runner_batch.hpp"
 #include "process/runner_single.hpp"
@@ -83,9 +84,39 @@ int report_missing(const std::string &error) {
 }
 
 BuildResult build_step(const AppConfig &cfg, BuildTarget target) {
+  const std::filesystem::path exe = target_exe(cfg, target);
+
+  std::string note;
+  stale_exe::Outcome cleared = stale_exe::clear(exe, false, note);
+  if (cleared == stale_exe::Outcome::Blocked) {
+    std::cout << color::err("[build] ", note, "\n") << std::flush;
+    if (prompt::ask_yes_no("Move it into " +
+                           (exe.parent_path() / ".trash").string() +
+                           " under its SHA-256 and carry on?")) {
+      cleared = stale_exe::clear(exe, true, note);
+      if (cleared == stale_exe::Outcome::Parked)
+        std::cout << color::ok("[build] ", note, "\n");
+    }
+  } else if (cleared == stale_exe::Outcome::Parked) {
+    std::cout << color::ok("[build] ", note, "\n");
+  }
+
+  if (cleared == stale_exe::Outcome::Blocked) {
+    BuildResult r;
+    r.message = note;
+    std::cerr << color::err("[compile] Failed:\n", note, "\n")
+              << color::err(
+                     "[build] The build cannot continue. Close whatever is "
+                     "using the file and try again.")
+              << "\n";
+    if (!prompt::should_pause(-1) && prompt::interactive_stdin())
+      prompt::pause_if_needed(1);
+    return r;
+  }
+
   BuildOption opt;
   opt.source_path = cfg.source_path;
-  opt.output_path = target_exe(cfg, target);
+  opt.output_path = exe;
   opt.args = cfg.args;
   opt.extra_deps.push_back(cfg.config_path);
 

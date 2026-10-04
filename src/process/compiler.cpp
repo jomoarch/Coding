@@ -93,9 +93,19 @@ CompilerResult compile_source(const CompilerOptions &opts) {
   }
 
   if (std::filesystem::exists(opts.output_path, ec)) {
+    ec.clear();
     std::filesystem::remove(opts.output_path, ec);
-    if (ec) {
-      r.message = "Failed to remove existing output file: " + ec.message();
+    if (!ec) {
+      ec.clear();
+      if (!std::filesystem::exists(opts.output_path, ec))
+        ec = {};
+    }
+    if (ec || std::filesystem::exists(opts.output_path, ec)) {
+      const std::string reason =
+          ec ? win::error_string(static_cast<DWORD>(ec.value()))
+             : std::string("still in use");
+      r.message = "Cannot remove the existing " + opts.output_path.string() +
+                  ": " + reason + " (something is still holding it open)";
       return r;
     }
   }
@@ -169,12 +179,27 @@ CompilerResult compile_source(const CompilerOptions &opts) {
 
   PROCESS_INFORMATION pi{};
   if (!CreateProcessW(nullptr, cmdBuf.data(), nullptr, nullptr, TRUE,
-                      CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
+                      CREATE_SUSPENDED | CREATE_NO_WINDOW, nullptr, nullptr,
+                      &si, &pi)) {
     r.message = "CreateProcessW failed: " + win::last_error_string();
     return r;
   }
   HandleGuard hProcess(pi.hProcess);
   HandleGuard hThread(pi.hThread);
+
+  JOBOBJECT_EXTENDED_LIMIT_INFORMATION jeli{};
+  jeli.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+  HANDLE job_raw = CreateJobObjectW(nullptr, nullptr);
+  HandleGuard hJob(job_raw);
+  if (!hJob.valid() ||
+      !SetInformationJobObject(hJob.get(), JobObjectExtendedLimitInformation,
+                               &jeli, sizeof(jeli)) ||
+      !AssignProcessToJobObject(hJob.get(), pi.hProcess)) {
+    std::fprintf(stderr, "[compile] warning: %s\n",
+                 win::last_error_string().c_str());
+    hJob.reset();
+  }
+  ResumeThread(pi.hThread);
 
   hWirte.reset();
   std::string output = read_pipe(hRead.get());

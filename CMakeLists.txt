@@ -42,6 +42,7 @@ set(APP_SOURCES
   src/app/manager.cpp
   src/app/modes.cpp
   src/app/prompt.cpp
+  src/app/stale_exe.cpp
   src/app/viewer.cpp
 )
 
