@@ -4,6 +4,7 @@
 
 #include <windows.h>
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -86,13 +87,99 @@ std::filesystem::path read_pointer(const std::filesystem::path &link) {
 struct LocatedConfig {
   std::filesystem::path path;
   std::string note;
+  bool error{false};
 };
+
+bool is_link_file(const std::filesystem::path &p) {
+  const std::string name = p.filename().string();
+  return name.size() > 5 &&
+         text::to_lower(name.substr(name.size() - 5)) == ".link";
+}
+
+std::string path_key(const std::filesystem::path &p) {
+  std::error_code ec;
+  std::filesystem::path canon = std::filesystem::weakly_canonical(p, ec);
+  if (ec)
+    canon = std::filesystem::absolute(p, ec).lexically_normal();
+  return text::to_lower(canon.string());
+}
+
+std::string chain_text(const std::vector<std::string> &chain) {
+  std::string out;
+  for (const std::string &step : chain) {
+    if (!out.empty())
+      out += " -> ";
+    out += step;
+  }
+  return out;
+}
+
+LocatedConfig follow_chain(const std::filesystem::path &start) {
+  constexpr int kMaxHops = 16;
+
+  LocatedConfig found;
+  std::vector<std::string> chain;
+  std::vector<std::string> seen;
+  std::filesystem::path link = start;
+
+  for (int hop = 0; hop < kMaxHops; ++hop) {
+    chain.push_back(link.string());
+
+    const std::string key = path_key(link);
+    if (std::find(seen.begin(), seen.end(), key) != seen.end()) {
+      found.error = true;
+      found.note = "link loop: " + chain_text(chain);
+      return found;
+    }
+    seen.push_back(key);
+
+    const std::filesystem::path target = read_pointer(link);
+    if (target.empty()) {
+      found.error = true;
+      found.note = link.string() + " is a link with no path in it";
+      return found;
+    }
+
+    std::error_code ec;
+    if (!std::filesystem::exists(target, ec)) {
+      found.error = true;
+      found.note = link.string() + " points at " + target.string() +
+                   ", which is not there";
+      return found;
+    }
+    if (std::filesystem::is_directory(target, ec)) {
+      found.error = true;
+      found.note = link.string() + " points at " + target.string() +
+                   ", which is a directory";
+      return found;
+    }
+
+    if (!is_link_file(target)) {
+      std::error_code abs_ec;
+      const std::filesystem::path clean =
+          std::filesystem::absolute(target, abs_ec).lexically_normal();
+      found.path = abs_ec ? target : clean;
+      found.note = "using " + found.path.string() + " (followed " +
+                   chain_text(chain) + ")";
+      return found;
+    }
+
+    link = target;
+  }
+
+  found.error = true;
+  found.note = "link chain is deeper than " + std::to_string(kMaxHops) +
+               " links: " + chain_text(chain);
+  return found;
+}
 
 LocatedConfig locate_config(const std::filesystem::path &requested) {
   LocatedConfig found;
 
   std::error_code ec;
   if (std::filesystem::is_regular_file(requested, ec)) {
+    if (is_link_file(requested))
+      return follow_chain(requested);
     found.path = requested;
     return found;
   }
@@ -113,18 +200,8 @@ LocatedConfig locate_config(const std::filesystem::path &requested) {
   }
 
   const std::filesystem::path link = exe / "config.link";
-  const std::filesystem::path target = read_pointer(link);
-  if (!target.empty()) {
-    if (!std::filesystem::is_regular_file(target, ec)) {
-      found.note = link.string() + " points at " + target.string() +
-                   ", which is not there";
-      found.path = requested;
-      return found;
-    }
-    found.path = target;
-    found.note =
-        "using " + target.string() + " (followed " + link.string() + ")";
-  }
+  if (std::filesystem::is_regular_file(link, ec))
+    return follow_chain(link);
   return found;
 }
 
@@ -174,13 +251,13 @@ ConfigResult load_config(const std::filesystem::path &path) {
   r.success = false;
 
   const LocatedConfig located = locate_config(path);
+  if (located.error) {
+    r.message = located.note;
+    return r;
+  }
   if (located.path.empty()) {
     r.message = "Config not found: " + path.string() +
                 " (and no config.toml or config.link next to the executable)";
-    return r;
-  }
-  if (!located.note.empty() && located.path == path) {
-    r.message = located.note;
     return r;
   }
   if (!located.note.empty())
