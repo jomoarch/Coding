@@ -10,6 +10,7 @@ source = "test/src/solution.cpp"
 output = "test/bin/solution.exe"
 output_probe = "test/bin/solution.probe.exe"
 args = ["g++", "-std=c++17", "-O2", "-Wall", "-Wextra"] # 源码与 -o <output> 会自动追加
+force_rebuild = false                                   # true = 每次运行都重新编译
 
 [inject]
 enabled = true                    # 关掉就不需要下面的头文件

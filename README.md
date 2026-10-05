@@ -255,7 +255,7 @@ view_b --prune --keep 3   # 手工清理，只留最新 3 条
 | 选项 | 说明 |
 | --- | --- |
 | `-c, --config <path>` | 指定配置文件 |
-| `-f, --force` | 即使可执行文件比源码新也重新编译（仅 `cg_*`） |
+| `-f, --force` | 即使可执行文件比源码新也重新编译（仅 `cg_*`；想常开就设 `[compiler].force_rebuild = true`） |
 | `--pause` / `--no-pause` | 强制 / 禁止退出前等待按键 |
 | `--list`、`--id` / `--run <id>`、`--prune --keep <n>` | 仅 `view_s` / `view_b` |
 | `-h, --help` | 显示帮助 |
@@ -322,6 +322,7 @@ view_b --prune --keep 3   # 手工清理，只留最新 3 条
 | `[compiler].output` | `cg_b`（关掉注入时 `cg_s` / `cg_i` 也用） | 原版可执行文件输出路径 |
 | `[compiler].output_probe` | `cg_s` / `cg_i` | 注入版输出路径；缺省由 `output` 派生，必须与 `output` 不同 |
 | `[compiler].args` | `cg_*` | 完整编译命令；源码与 `-o <output>` 会自动追加。默认 `g++ -std=c++17` |
+| `[compiler].force_rebuild` | `cg_*` | `true` 时每次运行都重新编译，等于总是加 `-f`；默认 `false`（增量） |
 | `[inject].enabled` | `cg_s` / `cg_i` | 是否注入 `probe.h`（默认 `true`）；关掉就不需要头文件 |
 | `[inject].header` | `cg_s` / `cg_i` | 要注入的头文件；缺省按 `base`、配置文件目录、`.exe` 目录依次找 `include/inject/probe.h` |
 | `[runner].work_dir` | `cg_*` | 运行目录；每个测试点还会在它下面各占一个子目录 |

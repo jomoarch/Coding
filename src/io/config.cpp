@@ -284,6 +284,7 @@ ConfigResult load_config(const std::filesystem::path &path) {
     read_field(t, "source", c.source_path);
     read_field(t, "output", c.exe_path);
     read_field(t, "output_probe", c.exe_path_probe);
+    read_field(t, "force_rebuild", c.force_rebuild);
     read_string_array(t, "args", c.args);
   });
 

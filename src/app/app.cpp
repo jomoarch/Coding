@@ -146,7 +146,8 @@ int run(Mode mode, int argc, char **argv) {
     std::cerr << color::err("[config] ", cfg_res.message) << "\n";
     return 2;
   }
-  cfg_res.config.force_rebuild = cli.force_rebuild;
+  cfg_res.config.force_rebuild =
+      cfg_res.config.force_rebuild || cli.force_rebuild;
 
   const int code = dispatch(mode, cfg_res.config);
 

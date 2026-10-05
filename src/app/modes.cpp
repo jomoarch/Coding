@@ -274,8 +274,11 @@ int run_batch(const AppConfig &cfg) {
   if (!built)
     return 2;
   if (built.rebuilt)
-    std::cout << "      rebuild: source/config newer than output\n"
-              << color::ok("      OK -> ", cfg.exe_path) << "\n";
+    std::cout
+        << (cfg.force_rebuild
+                ? "      rebuild: forced by [compiler].force_rebuild / -f\n"
+                : "      rebuild: source/config newer than output\n")
+        << color::ok("      OK -> ", cfg.exe_path) << "\n";
   else
     std::cout << "      skipped: up-to-date ("
               << cfg.exe_path.filename().string() << ")\n";
