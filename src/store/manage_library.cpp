@@ -15,6 +15,7 @@
 #include <system_error>
 #include <utility>
 #include <vector>
+namespace coding {
 
 namespace store {
 
@@ -502,3 +503,4 @@ CountLimitResult enforce_batch_limit(const fs::path &root,
 }
 
 } // namespace store
+} // namespace coding

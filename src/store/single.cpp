@@ -14,6 +14,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+namespace coding {
 
 namespace store {
 
@@ -270,3 +271,4 @@ PruneResult prune_single(const fs::path &root, std::size_t keep) {
 }
 
 } // namespace store
+} // namespace coding

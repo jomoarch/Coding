@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+namespace coding {
 
 namespace hash {
 
@@ -32,5 +33,7 @@ private:
 };
 
 } // namespace hash
+
+} // namespace coding
 
 #endif // HASH_HPP

@@ -20,6 +20,8 @@
 #endif
 #endif
 
+namespace coding {
+
 namespace {
 
 bool is_line_trailing_ws(char c) noexcept {
@@ -296,3 +298,5 @@ CompareResult compare_output(const CompareOption &opts) {
   r.success = true;
   return r;
 }
+
+} // namespace coding

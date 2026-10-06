@@ -9,6 +9,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+namespace coding {
 
 namespace text {
 
@@ -118,5 +119,7 @@ std::string to_upper(std::string_view text);
 bool iequals(std::string_view a, std::string_view b) noexcept;
 
 } // namespace text
+
+} // namespace coding
 
 #endif // TEXT_HPP

@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <iostream>
 #include <string>
+namespace coding {
 
 BuildResult ensure_built(const BuildOption &opts) {
   BuildResult r;
@@ -87,3 +88,4 @@ BuildResult ensure_built(const BuildOption &opts) {
   r.message = cr.message;
   return r;
 }
+} // namespace coding

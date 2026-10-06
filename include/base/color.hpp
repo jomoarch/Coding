@@ -13,6 +13,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+namespace coding {
 
 namespace color {
 
@@ -277,5 +278,7 @@ private:
 std::size_t visible_width(std::string_view text) noexcept;
 
 } // namespace color
+
+} // namespace coding
 
 #endif // COLOR_HPP

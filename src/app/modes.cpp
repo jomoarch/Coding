@@ -16,6 +16,7 @@
 #include <sstream>
 #include <string>
 #include <utility>
+namespace coding {
 
 namespace fs = std::filesystem;
 
@@ -328,3 +329,4 @@ int run_batch(const AppConfig &cfg) {
 
   return clean == results.size() ? 0 : 1;
 }
+} // namespace coding

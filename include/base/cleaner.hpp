@@ -5,10 +5,13 @@
 
 #include <filesystem>
 #include <string>
+namespace coding {
 
 struct CleanerResult : ResultBase {};
 
 CleanerResult clean_dir(const std::filesystem::path &dir,
                         const std::string &suf = "");
+
+} // namespace coding
 
 #endif // CLEANER_HPP

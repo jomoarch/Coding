@@ -6,6 +6,8 @@
 #include <iostream>
 #include <string>
 
+using namespace coding;
+
 namespace {
 
 constexpr const char *kBinaryName = "rman_s";

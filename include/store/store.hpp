@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+namespace coding {
 
 namespace store {
 
@@ -203,5 +204,7 @@ enforce_batch_limit(const std::filesystem::path &root,
                     std::size_t max_unprotected);
 
 } // namespace store
+
+} // namespace coding
 
 #endif // STORE_HPP

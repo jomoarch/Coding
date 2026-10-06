@@ -4,6 +4,7 @@
 #include "compare/compare.hpp"
 
 #include <string>
+namespace coding {
 
 enum class CaseState {
   Identical,
@@ -23,5 +24,7 @@ struct Case {
 
 const char *case_state_token(CaseState state) noexcept;
 bool case_state_from_token(const std::string &token, CaseState &out) noexcept;
+
+} // namespace coding
 
 #endif // COMPARE_CASE_HPP

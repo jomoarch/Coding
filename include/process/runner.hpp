@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <chrono>
+namespace coding {
 
 struct RunnerOptions {
   std::filesystem::path exe_path;
@@ -35,5 +36,7 @@ struct [[nodiscard]] RunnerResult {
 };
 
 RunnerResult run_exe(const RunnerOptions &opts);
+
+} // namespace coding
 
 #endif // RUNNER_HPP

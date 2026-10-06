@@ -13,6 +13,7 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+namespace coding {
 
 namespace store::detail {
 
@@ -188,3 +189,4 @@ std::uintmax_t folder_bytes(const fs::path &folder) {
 }
 
 } // namespace store::detail
+} // namespace coding

@@ -1,6 +1,7 @@
 #include "base/win_error.hpp"
 
 #include <vector>
+namespace coding {
 
 namespace win {
 
@@ -32,3 +33,5 @@ std::string error_string(DWORD code) {
 std::string last_error_string() { return error_string(GetLastError()); }
 
 } // namespace win
+
+} // namespace coding

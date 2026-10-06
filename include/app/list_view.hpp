@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+namespace coding {
 
 namespace list_view {
 
@@ -49,5 +50,7 @@ void reshape(State &state, std::size_t width, std::size_t height,
              std::size_t rows);
 
 } // namespace list_view
+
+} // namespace coding
 
 #endif // LIST_VIEW_HPP

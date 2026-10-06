@@ -9,6 +9,7 @@
 #include <system_error>
 #include <utility>
 #include <vector>
+namespace coding {
 
 namespace store::detail {
 
@@ -119,3 +120,4 @@ std::uintmax_t erase_id_folders(const fs::path &dir) {
 }
 
 } // namespace store::detail
+} // namespace coding

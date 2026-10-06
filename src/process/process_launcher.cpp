@@ -2,6 +2,7 @@
 #include "base/win_error.hpp"
 
 #include <vector>
+namespace coding {
 
 namespace {
 
@@ -234,3 +235,5 @@ ProcessResult ChildProcess::wait() {
 
   return r;
 }
+
+} // namespace coding

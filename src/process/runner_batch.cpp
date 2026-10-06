@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <thread>
+namespace coding {
 
 std::vector<ResultUnit> run_all(const BatchOptions &opts) {
   const auto &pairs = opts.pairs;
@@ -62,3 +63,5 @@ std::vector<ResultUnit> run_all(const BatchOptions &opts) {
 
   return r;
 }
+
+} // namespace coding

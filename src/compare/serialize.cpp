@@ -9,6 +9,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+namespace coding {
 
 namespace {
 
@@ -268,3 +269,4 @@ LoadResult load_compare_result(const std::filesystem::path &path) {
   out.success = true;
   return out;
 }
+} // namespace coding

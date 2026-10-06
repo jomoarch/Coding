@@ -3,6 +3,7 @@
 
 #include "app/prompt.hpp"
 #include "io/config.hpp"
+namespace coding {
 
 namespace manager {
 
@@ -15,5 +16,7 @@ void enforce_limits(const AppConfig &cfg, bool batch,
                     std::string *note = nullptr);
 
 } // namespace manager
+
+} // namespace coding
 
 #endif // MANAGER_HPP

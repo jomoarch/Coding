@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+namespace coding {
 
 namespace store::detail {
 
@@ -14,5 +15,7 @@ std::string escape_field(std::string_view text);
 std::string unescape_field(std::string_view text);
 
 } // namespace store::detail
+
+} // namespace coding
 
 #endif // STORE_DETAIL_FIELDS_HPP

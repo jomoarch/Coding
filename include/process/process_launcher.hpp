@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <string>
+namespace coding {
 
 struct ProcessOptions {
   std::filesystem::path exe_path;
@@ -54,5 +55,7 @@ private:
   std::chrono::steady_clock::time_point start_{};
   ProcessOptions opts_{};
 };
+
+} // namespace coding
 
 #endif // PROCESS_LAUNCHER_HPP

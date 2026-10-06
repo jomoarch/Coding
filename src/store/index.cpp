@@ -12,6 +12,7 @@
 #include <system_error>
 #include <utility>
 #include <vector>
+namespace coding {
 
 namespace store::detail {
 
@@ -165,3 +166,4 @@ bool prune(const fs::path &dir, const Layout &layout, std::size_t keep,
 }
 
 } // namespace store::detail
+} // namespace coding

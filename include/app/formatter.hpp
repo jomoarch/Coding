@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+namespace coding {
 
 std::vector<std::string> format_results(const std::vector<ResultUnit> &results,
                                         bool show_message = true,
@@ -16,5 +17,7 @@ std::vector<std::string> format_results(const std::vector<ResultUnit> &results,
                                         std::ostream &os = std::cout);
 
 std::string format_memory(std::size_t bytes);
+
+} // namespace coding
 
 #endif // FORMATTER_HPP

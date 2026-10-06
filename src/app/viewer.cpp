@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <iostream>
 #include <string_view>
+namespace coding {
 
 namespace viewer {
 
@@ -658,3 +659,4 @@ int view_batch(const std::vector<Case> &cases) {
 }
 
 } // namespace viewer
+} // namespace coding

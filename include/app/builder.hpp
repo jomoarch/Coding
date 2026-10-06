@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <vector>
 #include <string>
+namespace coding {
 
 struct BuildOption {
   std::filesystem::path source_path;
@@ -27,5 +28,7 @@ struct BuildResult {
 };
 
 BuildResult ensure_built(const BuildOption &opts);
+
+} // namespace coding
 
 #endif // BUILDER_HPP

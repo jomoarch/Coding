@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <string>
 #include <string_view>
+namespace coding {
 
 namespace term {
 
@@ -60,5 +61,7 @@ private:
 };
 
 } // namespace term
+
+} // namespace coding
 
 #endif // TERMINAL_HPP

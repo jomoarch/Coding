@@ -6,6 +6,7 @@
 #include <sstream>
 #include <algorithm>
 #include <utility>
+namespace coding {
 
 std::string format_memory(std::size_t bytes) {
   if (bytes == 0)
@@ -110,3 +111,5 @@ std::vector<std::string> format_results(const std::vector<ResultUnit> &results,
   }
   return out;
 }
+
+} // namespace coding

@@ -9,6 +9,7 @@
 #endif
 
 #include <windows.h>
+namespace coding {
 
 struct HandleGuard {
   HANDLE h = INVALID_HANDLE_VALUE;
@@ -36,5 +37,7 @@ struct HandleGuard {
     h = handle;
   }
 };
+
+} // namespace coding
 
 #endif // HANDLE_HPP

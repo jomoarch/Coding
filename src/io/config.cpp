@@ -10,6 +10,7 @@
 #include <sstream>
 #include <string_view>
 #include <system_error>
+namespace coding {
 
 namespace {
 
@@ -371,3 +372,5 @@ ConfigResult load_config(const std::filesystem::path &path) {
   r.message = "OK";
   return r;
 }
+
+} // namespace coding

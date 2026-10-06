@@ -1,6 +1,7 @@
 #include "base/cleaner.hpp"
 
 #include <cstddef>
+namespace coding {
 
 CleanerResult clean_dir(const std::filesystem::path &dir,
                         const std::string &suf) {
@@ -47,3 +48,5 @@ CleanerResult clean_dir(const std::filesystem::path &dir,
 
   return r;
 }
+
+} // namespace coding

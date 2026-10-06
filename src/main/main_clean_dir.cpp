@@ -6,6 +6,8 @@
 #include <iostream>
 #include <string>
 
+using namespace coding;
+
 namespace {
 
 const char *kBinaryName = "cg_clean";

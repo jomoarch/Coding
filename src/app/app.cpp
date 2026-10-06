@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include <string>
+namespace coding {
 
 namespace app {
 
@@ -156,3 +157,4 @@ int run(Mode mode, int argc, char **argv) {
 }
 
 } // namespace app
+} // namespace coding

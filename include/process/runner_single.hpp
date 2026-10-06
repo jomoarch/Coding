@@ -5,6 +5,7 @@
 
 #include <filesystem>
 #include <string>
+namespace coding {
 
 struct SingleRunOption {
   std::filesystem::path exe_path;
@@ -31,5 +32,7 @@ struct SingleRunResult {
 };
 
 [[nodiscard]] SingleRunResult run_single(const SingleRunOption &opts);
+
+} // namespace coding
 
 #endif // RUNNER_SINGLE_HPP

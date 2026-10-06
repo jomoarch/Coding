@@ -1,6 +1,7 @@
 #include "compare/case.hpp"
 
 #include <string>
+namespace coding {
 
 const char *case_state_token(CaseState state) noexcept {
   switch (state) {
@@ -37,3 +38,4 @@ bool case_state_from_token(const std::string &token, CaseState &out) noexcept {
     return false;
   return true;
 }
+} // namespace coding

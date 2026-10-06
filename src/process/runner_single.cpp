@@ -14,6 +14,7 @@
 #include <vector>
 #include <mutex>
 #include <atomic>
+namespace coding {
 
 namespace {
 
@@ -490,3 +491,4 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   out.captured = std::move(captured);
   return out;
 }
+} // namespace coding

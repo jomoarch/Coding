@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+namespace coding {
 
 namespace store::detail {
 
@@ -22,5 +23,7 @@ bool file_size_of(const std::filesystem::path &path, std::uint64_t &size,
                   std::string &error);
 
 } // namespace store::detail
+
+} // namespace coding
 
 #endif // STORE_DETAIL_FILES_HPP

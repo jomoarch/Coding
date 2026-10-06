@@ -5,6 +5,7 @@
 
 #include <string>
 #include <utility>
+namespace coding {
 
 #ifndef NT_SUCCESS
 #define NT_SUCCESS(status) (((NTSTATUS)(status)) >= 0)
@@ -133,3 +134,4 @@ std::string Sha256::hex() {
 }
 
 } // namespace hash
+} // namespace coding

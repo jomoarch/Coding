@@ -21,6 +21,8 @@
 #include <unistd.h>
 #endif
 
+namespace coding {
+
 namespace color {
 
 namespace {
@@ -437,3 +439,4 @@ std::size_t visible_width(std::string_view text) noexcept {
 }
 
 } // namespace color
+} // namespace coding

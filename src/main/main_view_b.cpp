@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+using namespace coding;
+
 namespace {
 
 const char *kBinaryName = "view_b";

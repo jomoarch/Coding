@@ -3,6 +3,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+namespace coding {
 
 namespace store::detail {
 
@@ -79,3 +80,4 @@ std::string join_row(const std::vector<std::string> &fields) {
 }
 
 } // namespace store::detail
+} // namespace coding

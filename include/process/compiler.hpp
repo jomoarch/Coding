@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+namespace coding {
 
 struct CompilerOptions {
   std::filesystem::path source_path;
@@ -18,5 +19,7 @@ struct CompilerOptions {
 struct CompilerResult : ResultBase {};
 
 CompilerResult compile_source(const CompilerOptions &opts);
+
+} // namespace coding
 
 #endif // COMPILER_HPP

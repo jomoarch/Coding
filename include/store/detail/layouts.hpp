@@ -2,6 +2,7 @@
 #define STORE_DETAIL_LAYOUTS_HPP
 
 #include "store/detail/index.hpp"
+namespace coding {
 
 namespace store::detail {
 
@@ -36,5 +37,7 @@ inline constexpr const char *kManifestFile = "manifest.tsv";
 inline constexpr const char *kPinFile = "pinned.tsv";
 
 } // namespace store::detail
+
+} // namespace coding
 
 #endif // STORE_DETAIL_LAYOUTS_HPP

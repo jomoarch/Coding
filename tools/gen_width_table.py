@@ -55,6 +55,7 @@ header = f"""// -- include/text_width_table.hpp
 #define TEXT_WIDTH_TABLE_HPP
 
 #include <cstdint>
+namespace coding{{
 
 namespace text {{
 namespace width_table {{
@@ -70,6 +71,8 @@ struct Range {{
 
 }} // namespace width_table
 }} // namespace text
+
+}} // namespace coding
 
 #endif // TEXT_WIDTH_TABLE_HPP
 """

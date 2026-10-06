@@ -9,6 +9,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+namespace coding {
 
 namespace viewer {
 
@@ -74,5 +75,7 @@ std::string render_batch(const std::vector<Case> &cases,
 int view_batch(const std::vector<Case> &cases);
 
 } // namespace viewer
+
+} // namespace coding
 
 #endif // VIEWER_HPP

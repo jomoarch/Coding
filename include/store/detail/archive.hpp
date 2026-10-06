@@ -9,6 +9,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+namespace coding {
 
 namespace store::detail {
 
@@ -46,5 +47,7 @@ bool looks_like_id(std::string_view name) noexcept;
 std::uintmax_t folder_bytes(const std::filesystem::path &folder);
 
 } // namespace store::detail
+
+} // namespace coding
 
 #endif // STORE_DETAIL_ARCHIVE_HPP

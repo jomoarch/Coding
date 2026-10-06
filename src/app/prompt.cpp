@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <string>
+namespace coding {
 
 namespace prompt {
 
@@ -159,3 +160,4 @@ bool ask_save(const std::filesystem::path &target, std::string_view what) {
 }
 
 } // namespace prompt
+} // namespace coding

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <string>
+namespace coding {
 
 namespace term {
 
@@ -240,3 +241,4 @@ bool Session::read_key(Key &out, bool raw, char32_t *text) const {
 }
 
 } // namespace term
+} // namespace coding

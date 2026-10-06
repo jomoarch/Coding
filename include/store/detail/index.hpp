@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+namespace coding {
 
 namespace store::detail {
 
@@ -41,5 +42,7 @@ bool prune(const std::filesystem::path &dir, const Layout &layout,
            std::size_t keep, PruneOutcome &out, std::string &error);
 
 } // namespace store::detail
+
+} // namespace coding
 
 #endif // STORE_DETAIL_INDEX_HPP

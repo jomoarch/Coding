@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+namespace coding {
 
 struct IOFileOption {
   std::filesystem::path input_dir;
@@ -40,5 +41,7 @@ gen_compare_pairs(const std::filesystem::path &input_dir,
                   const std::filesystem::path &answer_dir);
 
 bool case_name_less(const std::string &a, const std::string &b);
+
+} // namespace coding
 
 #endif // IOFILE_HPP

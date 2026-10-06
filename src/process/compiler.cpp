@@ -7,6 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+namespace coding {
 
 namespace {
 
@@ -221,3 +222,5 @@ CompilerResult compile_source(const CompilerOptions &opts) {
   }
   return r;
 }
+
+} // namespace coding

@@ -11,6 +11,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+namespace coding {
 
 namespace manager {
 
@@ -589,3 +590,4 @@ int run(Kind kind, bool batch, const prompt::Options &cli,
 }
 
 } // namespace manager
+} // namespace coding

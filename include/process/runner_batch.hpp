@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+namespace coding {
 
 struct BatchOptions {
   std::filesystem::path exe_path;
@@ -29,5 +30,7 @@ struct ResultUnit {
 };
 
 [[nodiscard]] std::vector<ResultUnit> run_all(const BatchOptions &opts);
+
+} // namespace coding
 
 #endif // RUNNER_BATCH_HPP

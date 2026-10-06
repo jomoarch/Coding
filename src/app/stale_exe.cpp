@@ -7,6 +7,7 @@
 #include <ctime>
 #include <fstream>
 #include <system_error>
+namespace coding {
 
 namespace fs = std::filesystem;
 
@@ -94,3 +95,4 @@ Outcome clear(const fs::path &exe, bool park, std::string &note) {
 }
 
 } // namespace stale_exe
+} // namespace coding

@@ -8,6 +8,7 @@
 #include <string_view>
 #include <system_error>
 #include <vector>
+namespace coding {
 
 namespace store::detail {
 
@@ -90,3 +91,4 @@ bool file_size_of(const fs::path &path, std::uint64_t &size,
 }
 
 } // namespace store::detail
+} // namespace coding

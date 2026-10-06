@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+using namespace coding;
+
 namespace {
 
 const char *kBinaryName = "cmp_s";

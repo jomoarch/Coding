@@ -1,6 +1,7 @@
 #include "process/runner.hpp"
 #include "process/process_launcher.hpp"
 #include "base/handle.hpp"
+namespace coding {
 
 RunnerResult run_exe(const RunnerOptions &opts) {
   RunnerResult r;
@@ -71,3 +72,5 @@ RunnerResult run_exe(const RunnerOptions &opts) {
   r.message = pr.message;
   return r;
 }
+
+} // namespace coding

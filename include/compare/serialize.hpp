@@ -6,6 +6,7 @@
 
 #include <filesystem>
 #include <string>
+namespace coding {
 
 struct SaveResult : ResultBase {};
 
@@ -19,5 +20,7 @@ struct LoadResult : ResultBase {
                                              const std::filesystem::path &path);
 
 [[nodiscard]] LoadResult load_compare_result(const std::filesystem::path &path);
+
+} // namespace coding
 
 #endif // COMPARE_SERIALIZE_HPP

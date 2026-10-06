@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <memory>
 #include <string_view>
+namespace coding {
 
 namespace file {
 
@@ -49,5 +50,7 @@ struct WriteResult : ResultBase {};
                                     std::string_view data);
 
 } // namespace file
+
+} // namespace coding
 
 #endif // FILE_HPP

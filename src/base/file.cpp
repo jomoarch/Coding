@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <limits>
 #include <new>
+namespace coding {
 
 namespace file {
 
@@ -113,3 +114,4 @@ WriteResult write_all(const std::filesystem::path &path,
 }
 
 } // namespace file
+} // namespace coding

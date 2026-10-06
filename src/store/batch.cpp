@@ -19,6 +19,7 @@
 #include <system_error>
 #include <utility>
 #include <vector>
+namespace coding {
 
 namespace store {
 
@@ -339,3 +340,4 @@ PruneResult prune_batch(const fs::path &root, std::size_t keep) {
 }
 
 } // namespace store
+} // namespace coding

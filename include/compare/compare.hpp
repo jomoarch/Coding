@@ -9,6 +9,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+namespace coding {
 
 enum class LineKind { Differ, OnlyOutput, OnlyExpect };
 
@@ -48,5 +49,7 @@ struct CompareResult : ResultBase {
 };
 
 [[nodiscard]] CompareResult compare_output(const CompareOption &opts);
+
+} // namespace coding
 
 #endif // COMPARE_HPP

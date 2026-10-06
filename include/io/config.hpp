@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <cstddef>
+namespace coding {
 
 struct AppConfig {
   std::filesystem::path config_path;
@@ -58,5 +59,7 @@ struct ConfigResult : ResultBase {
 };
 
 [[nodiscard]] ConfigResult load_config(const std::filesystem::path &path);
+
+} // namespace coding
 
 #endif // CONFIG_HPP

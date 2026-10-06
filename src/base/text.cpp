@@ -2,6 +2,7 @@
 #include "base/text_width_table.hpp"
 
 #include <cctype>
+namespace coding {
 
 namespace text {
 
@@ -157,3 +158,4 @@ bool iequals(std::string_view a, std::string_view b) noexcept {
 }
 
 } // namespace text
+} // namespace coding
