@@ -24,12 +24,12 @@
 
 namespace probe {
 
-inline constexpr char kStdoutTag = '\x01';
-inline constexpr char kStderrTag = '\x02';
+constexpr char kStdoutTag = '\x01';
+constexpr char kStderrTag = '\x02';
 
 namespace detail {
 
-inline constexpr std::size_t kBufSize = 64 * 1024;
+constexpr std::size_t kBufSize = 64 * 1024;
 
 struct Sink {
   HANDLE handle;
@@ -169,9 +169,9 @@ extern "C" inline int probe_printf(const char *fmt, ...) {
   std::string heap;
   heap.resize(static_cast<std::size_t>(n) + 1);
   va_start(ap, fmt);
-  ::vsnprintf(heap.data(), heap.size(), fmt, ap);
+  ::vsnprintf(&heap[0], heap.size(), fmt, ap);
   va_end(ap);
-  probe::detail::sink().push(probe::kStdoutTag, heap.data(),
+  probe::detail::sink().push(probe::kStdoutTag, &heap[0],
                              static_cast<std::size_t>(n));
   return n;
 }
@@ -205,9 +205,9 @@ extern "C" inline int probe_fprintf(FILE *stream, const char *fmt, ...) {
   std::string heap;
   heap.resize(static_cast<std::size_t>(n) + 1);
   va_start(ap, fmt);
-  ::vsnprintf(heap.data(), heap.size(), fmt, ap);
+  ::vsnprintf(&heap[0], heap.size(), fmt, ap);
   va_end(ap);
-  probe::detail::sink().push(tag, heap.data(), static_cast<std::size_t>(n));
+  probe::detail::sink().push(tag, &heap[0], static_cast<std::size_t>(n));
   return n;
 }
 
