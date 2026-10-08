@@ -149,10 +149,22 @@ LocatedConfig follow_chain(const std::filesystem::path &start) {
       return found;
     }
     if (std::filesystem::is_directory(target, ec)) {
-      found.error = true;
-      found.note = link.string() + " points at " + target.string() +
-                   ", which is a directory";
-      return found;
+      std::filesystem::path candidate = target / "config.toml";
+      std::error_code cand_ec;
+      if (std::filesystem::is_regular_file(candidate, cand_ec)) {
+        std::error_code abs_ec;
+        const std::filesystem::path clean =
+            std::filesystem::absolute(candidate, abs_ec).lexically_normal();
+        found.path = abs_ec ? candidate : clean;
+        found.note = "using " + found.path.string() + " (followed " +
+                     chain_text(chain) + " ans found config.toml in directory)";
+        return found;
+      } else {
+        found.error = true;
+        found.note = link.string() + " points at " + target.string() +
+                     ", which is a directory, but no config.toml found inside";
+        return found;
+      }
     }
 
     if (!is_link_file(target)) {

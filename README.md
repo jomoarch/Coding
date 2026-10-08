@@ -26,18 +26,18 @@ view_b
 
 十四个 exe 都生成在 `bin/`：
 
-| 工具 | 干什么 | 需要的配置键 |
-| --- | --- | --- |
-| `cg_b` | 编译一次，跑 `[io].input_dir` 下全部 `*.in` | `[compiler]` `[runner]` `[io].input_dir` `[io].output_dir` |
-| `cg_s` | 编译一次，用 `[io].single_input` 跑一次 | 上面那些 + `[io].single_input` |
-| `cg_i` | 编译一次，直接在控制台交互运行 | 同 `cg_s` |
-| `clean_dir` | 清空 `[io].input_dir`（只删 `*.in`）与 `[io].output_dir` | `[io].input_dir` `[io].output_dir` |
-| `cmp_s` | 比较 `single_output` 与 `single_answer`，预览后询问是否存档 | 两个路径（+ `result_root`） |
-| `cmp_b` | 比较整个 run，浏览后询问是否存档 | `input_dir` `output_dir` `answer_dir`（+ `result_root`） |
-| `view_s` / `view_b` | 只读仓库：打开最新那次比较 / 最新那个 run | `result_root` |
-| `rman_s` / `rman_b` | 管理记录：看、删（进回收站）、加/取消保护 | `result_root` |
-| `tman_s` / `tman_b` | 管理回收站：恢复、彻底删除、清空 | `result_root` |
-| `pin_s` / `pin_b` | 管理保护名单：把记录移出名单 | `result_root` |
+| 工具                | 干什么                                                      | 需要的配置键                                               |
+| ------------------- | ----------------------------------------------------------- | ---------------------------------------------------------- |
+| `cg_b`              | 编译一次，跑 `[io].input_dir` 下全部 `*.in`                 | `[compiler]` `[runner]` `[io].input_dir` `[io].output_dir` |
+| `cg_s`              | 编译一次，用 `[io].single_input` 跑一次                     | 上面那些 + `[io].single_input`                             |
+| `cg_i`              | 编译一次，直接在控制台交互运行                              | 同 `cg_s`                                                  |
+| `clean_dir`         | 清空 `[io].input_dir`（只删 `*.in`）与 `[io].output_dir`    | `[io].input_dir` `[io].output_dir`                         |
+| `cmp_s`             | 比较 `single_output` 与 `single_answer`，预览后询问是否存档 | 两个路径（+ `result_root`）                                |
+| `cmp_b`             | 比较整个 run，浏览后询问是否存档                            | `input_dir` `output_dir` `answer_dir`（+ `result_root`）   |
+| `view_s` / `view_b` | 只读仓库：打开最新那次比较 / 最新那个 run                   | `result_root`                                              |
+| `rman_s` / `rman_b` | 管理记录：看、删（进回收站）、加/取消保护                   | `result_root`                                              |
+| `tman_s` / `tman_b` | 管理回收站：恢复、彻底删除、清空                            | `result_root`                                              |
+| `pin_s` / `pin_b`   | 管理保护名单：把记录移出名单                                | `result_root`                                              |
 
 **没有任何键是必填的**：加载只负责读文件、填默认值，每个工具自己检查它实际需要的字段。
 
@@ -50,11 +50,11 @@ cmake --build build --config Release
 
 ## 编译并运行：`cg_*`
 
-| 可执行文件 | 模式 | 行为 |
-| --- | --- | --- |
-| `cg_b` | batch | 编译一次，跑 `[io].input_dir` 下的全部 `*.in` |
-| `cg_s` | single | 编译一次，用 `[io].single_input` 作为输入跑一次 |
-| `cg_i` | interactive | 编译一次，直接在控制台里交互运行（stdin 接到你的键盘） |
+| 可执行文件 | 模式        | 行为                                                   |
+| ---------- | ----------- | ------------------------------------------------------ |
+| `cg_b`     | batch       | 编译一次，跑 `[io].input_dir` 下的全部 `*.in`          |
+| `cg_s`     | single      | 编译一次，用 `[io].single_input` 作为输入跑一次        |
+| `cg_i`     | interactive | 编译一次，直接在控制台里交互运行（stdin 接到你的键盘） |
 
 三种模式都会重定向 stdout 与 stderr。`cg_b` 不回显程序输出，结果只落盘到对应的 `*.out`；`cg_s` 和
 `cg_i` 会在终端回显。`cg_s` 的回显以 `--- output ---` 开头，想连输入一起看就把 `[io].print_input`
@@ -101,11 +101,11 @@ cmake --build build --config Release
 
 `[io].merge_stderr` 决定保存下来的输出文件里是否也包含 stderr：
 
-| 取值 | 效果 |
-| --- | --- |
-| `true` | stderr 也写进输出文件。注入版下两路在同一流里，**顺序和程序写的一致**；没注入时来自两条管道，顺序不保证 |
-| `false` | 输出文件只存 stdout；stderr 直接打到终端，不会丢 |
-| 不写 | 各自维持原来的样子：`cg_b` 合并进 `*.out`，`cg_s` / `cg_i` 只存 stdout |
+| 取值    | 效果                                                                                                    |
+| ------- | ------------------------------------------------------------------------------------------------------- |
+| `true`  | stderr 也写进输出文件。注入版下两路在同一流里，**顺序和程序写的一致**；没注入时来自两条管道，顺序不保证 |
+| `false` | 输出文件只存 stdout；stderr 直接打到终端，不会丢                                                        |
+| 不写    | 各自维持原来的样子：`cg_b` 合并进 `*.out`，`cg_s` / `cg_i` 只存 stdout                                  |
 
 ### 交互模式下的粘贴
 
@@ -118,12 +118,12 @@ cmake --build build --config Release
 **`cmp_s`** 比较 `[io].single_output` 与 `[io].single_answer`，然后进入全屏预览：顶部是匹配状态与
 两侧行数，下面是未匹配行的行号列表（两个数字都右对齐），每行前面还有一个类型标记：
 
-| 标记 | 含义 |
-| --- | --- |
-| `!` | token 不同 |
-| `~` | 只有行内空白不同 |
-| `+` | 只在 output 里 |
-| `-` | 只在 expect 里 |
+| 标记 | 含义             |
+| ---- | ---------------- |
+| `!`  | token 不同       |
+| `~`  | 只有行内空白不同 |
+| `+`  | 只在 output 里   |
+| `-`  | 只在 expect 里   |
 
 预览结束后询问是否**存档**这次比较，名字默认取 `[io].single_input` 的文件名（可用
 `[io].single_name` 覆盖）；`--no-save` 跳过询问。
@@ -177,11 +177,11 @@ cmake --build build --config Release
 
 ### 三个管理器
 
-| 工具 | 干什么 |
-| --- | --- |
+| 工具                | 干什么                                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `rman_s` / `rman_b` | 列出所有存档记录：`Enter` 进去看（就是 `view_s` / `view_b` 的浏览），`d` 删除（进回收站），`p` 加入保护名单，`Shift+p` 取消保护 |
-| `tman_s` / `tman_b` | 回收站：`r` 恢复，`d` 彻底删除，`Shift+d` 全部清空 |
-| `pin_s` / `pin_b` | 保护名单：`d` 把某条记录从名单里去掉 |
+| `tman_s` / `tman_b` | 回收站：`r` 恢复，`d` 彻底删除，`Shift+d` 全部清空                                                                              |
+| `pin_s` / `pin_b`   | 保护名单：`d` 把某条记录从名单里去掉                                                                                            |
 
 三个工具同一套界面：**最上面一行是状态**（库、条数、保护数、上限、当前过滤/排序），中间是列表，
 **最下面一行始终留给命令输入**：
@@ -212,29 +212,29 @@ cmake --build build --config Release
 
 通用（所有全屏界面）：
 
-| 按键 | 作用 |
-| --- | --- |
-| `j` / `k`、`↑` / `↓` | 上下移动光标 |
-| `Ctrl+j` / `Ctrl+k`、`Ctrl+↑` / `Ctrl+↓` | 只滚动视野，不动光标 |
-| `q` / `Esc` | 退出（批量浏览里进了用例之后，先退回用例列表，见下） |
+| 按键                                     | 作用                                                 |
+| ---------------------------------------- | ---------------------------------------------------- |
+| `j` / `k`、`↑` / `↓`                     | 上下移动光标                                         |
+| `Ctrl+j` / `Ctrl+k`、`Ctrl+↑` / `Ctrl+↓` | 只滚动视野，不动光标                                 |
+| `q` / `Esc`                              | 退出（批量浏览里进了用例之后，先退回用例列表，见下） |
 
 匹配结果详情（`cmp_s` 预览、`view_s`、`cmp_b` / `view_b` / `rman_b` 里进到某个用例之后）：
 
-| 按键 | 作用 |
-| --- | --- |
-| `Enter` / `→` | 展开这一行，或跳到下一个不同的 token |
-| `Shift+Enter` / `←` | 回到上一个 token，或收回这一行 |
-| `c` | 收回当前行 |
-| `r` | 全部收回 |
-| `Backspace` | 批量浏览里：退回用例列表 |
-| `q` / `Esc` | 批量浏览里：等同于 `Backspace`（退回列表）；列表页：退出 |
+| 按键                | 作用                                                     |
+| ------------------- | -------------------------------------------------------- |
+| `Enter` / `→`       | 展开这一行，或跳到下一个不同的 token                     |
+| `Shift+Enter` / `←` | 回到上一个 token，或收回这一行                           |
+| `c`                 | 收回当前行                                               |
+| `r`                 | 全部收回                                                 |
+| `Backspace`         | 批量浏览里：退回用例列表                                 |
+| `q` / `Esc`         | 批量浏览里：等同于 `Backspace`（退回列表）；列表页：退出 |
 
 批量用例列表（`cmp_b` / `view_b` / `rman_b`）：
 
-| 按键 | 作用 |
-| --- | --- |
-| `Enter` | 进入光标所在的用例（`no output` 之类没有内容的用例进不去） |
-| `Backspace`、`q`、`Esc` | 退出整个浏览器（在用例内部时则是退回列表） |
+| 按键                    | 作用                                                       |
+| ----------------------- | ---------------------------------------------------------- |
+| `Enter`                 | 进入光标所在的用例（`no output` 之类没有内容的用例进不去） |
+| `Backspace`、`q`、`Esc` | 退出整个浏览器（在用例内部时则是退回列表）                 |
 
 管理器（`rman_*` / `tman_*` / `pin_*`）：移动同上，另有各自的动作（见上一节表格）、`:` 开命令输入。
 
@@ -252,21 +252,21 @@ view_b --run <id>         # 打开指定的那个 run
 view_b --prune --keep 3   # 手工清理，只留最新 3 条
 ```
 
-| 选项 | 说明 |
-| --- | --- |
-| `-c, --config <path>` | 指定配置文件 |
-| `-f, --force` | 即使可执行文件比源码新也重新编译（仅 `cg_*`；想常开就设 `[compiler].force_rebuild = true`） |
-| `--pause` / `--no-pause` | 强制 / 禁止退出前等待按键 |
-| `--list`、`--id` / `--run <id>`、`--prune --keep <n>` | 仅 `view_s` / `view_b` |
-| `-h, --help` | 显示帮助 |
+| 选项                                                  | 说明                                                                                        |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `-c, --config <path>`                                 | 指定配置文件                                                                                |
+| `-f, --force`                                         | 即使可执行文件比源码新也重新编译（仅 `cg_*`；想常开就设 `[compiler].force_rebuild = true`） |
+| `--pause` / `--no-pause`                              | 强制 / 禁止退出前等待按键                                                                   |
+| `--list`、`--id` / `--run <id>`、`--prune --keep <n>` | 仅 `view_s` / `view_b`                                                                      |
+| `-h, --help`                                          | 显示帮助                                                                                    |
 
 **退出码**：
 
-| 码 | 运行类工具（`cg_*`） | 比较 / 查看类工具 | 管理类工具（`rman_*` `tman_*` `pin_*`） |
-| --- | --- | --- | --- |
-| `0` | 全部测试点正常结束 | 完全一致 | 正常退出 |
-| `1` | 有测试点报错 | 有差异（或有记录没结果） | —（不会出现） |
-| `2` | 配置 / 编译 / IO 出错 | 配置 / IO 出错 | 配置 / IO 出错 |
+| 码  | 运行类工具（`cg_*`）  | 比较 / 查看类工具        | 管理类工具（`rman_*` `tman_*` `pin_*`） |
+| --- | --------------------- | ------------------------ | --------------------------------------- |
+| `0` | 全部测试点正常结束    | 完全一致                 | 正常退出                                |
+| `1` | 有测试点报错          | 有差异（或有记录没结果） | —（不会出现）                           |
+| `2` | 配置 / 编译 / IO 出错 | 配置 / IO 出错           | 配置 / IO 出错                          |
 
 **关于「按任意键退出」**：默认只在**本进程独占控制台**（也就是双击 exe）时才等待。在终端、VSCode
 任务或 CI 里运行时不再阻塞。需要旧行为就用 `--pause`。
@@ -303,8 +303,7 @@ view_b --prune --keep 3   # 手工清理，只留最新 3 条
   每一跳的相对路径都以**它自己所在目录**为起点。`-c` 也可以直接给一个 `.link` 文件。
 
   链上的问题都会指名道姓地报出来，绝不静默退回别的配置：**成环**（`link loop: a.link -> b.link ->
-  a.link`；同一个文件的不同写法——绝对/相对、含 `..`、大小写不同——都会被认成同一个）、指向**不
-  存在的文件**、指向**目录**、链接里**没有路径**、以及超过 **16 跳**。工具查找配置的顺序是：
+  a.link`；同一个文件的不同写法——绝对/相对、含 `..`、大小写不同——都会被认成同一个）、指向**不存在的文件**、链接里**没有路径**、以及超过 **16 跳**。工具查找配置的顺序是：
   1. `-c` 指定的路径（没给就是当前目录下的 `config.toml`）；
   2. **`.exe` 旁边的 `config.toml`**；
   3. **`.exe` 旁边的 `config.link`** 以及它串起来的整条链。
@@ -313,33 +312,35 @@ view_b --prune --keep 3   # 手工清理，只留最新 3 条
   `config.link`（symlink 需要管理员或开发者模式，`config.link` 不需要）。跟着链接找到配置时会在
   stderr 打一行 `[config] using <真实路径> (followed <第一跳> -> <第二跳> -> ...)`。
 
+  支持将链接到包含配置文件的目录。
+
 ### 全部键
 
-| 键 | 谁需要 | 说明 |
-| --- | --- | --- |
-| `base`（顶层） | 全部 | 文件里所有相对路径的起点；缺省为配置文件所在目录 |
-| `[compiler].source` | `cg_*` | 源文件 |
-| `[compiler].output` | `cg_b`（关掉注入时 `cg_s` / `cg_i` 也用） | 原版可执行文件输出路径 |
-| `[compiler].output_probe` | `cg_s` / `cg_i` | 注入版输出路径；缺省由 `output` 派生，必须与 `output` 不同 |
-| `[compiler].args` | `cg_*` | 完整编译命令；源码与 `-o <output>` 会自动追加。默认 `g++ -std=c++17` |
-| `[compiler].force_rebuild` | `cg_*` | `true` 时每次运行都重新编译，等于总是加 `-f`；默认 `false`（增量） |
-| `[inject].enabled` | `cg_s` / `cg_i` | 是否注入 `probe.h`（默认 `true`）；关掉就不需要头文件 |
-| `[inject].header` | `cg_s` / `cg_i` | 要注入的头文件；缺省按 `base`、配置文件目录、`.exe` 目录依次找 `include/inject/probe.h` |
-| `[runner].work_dir` | `cg_*` | 运行目录；每个测试点还会在它下面各占一个子目录 |
-| `[runner].time_limit_ms` | `cg_*` | CPU 时间上限；不写就永远不杀超时程序 |
-| `[runner].memory_limit_mb` | `cg_*` | 内存上限；`0` 表示不限 |
-| `[io].input_dir` | `cg_b` `cmp_b` `clean_dir` | 存放 `*.in` 的目录 |
-| `[io].output_dir` | `cg_b` `cmp_b` `clean_dir` | 存放 `*.out` 的目录 |
-| `[io].single_input` | `cg_s` | `cg_s` 的输入文件 |
-| `[io].single_output` | `cg_s` / `cg_i` / `cmp_s` | 程序输出落盘的位置，也是 `cmp_s` 要比对的一侧 |
-| `[io].single_answer` | `cmp_s` | 期望答案；只影响比较 |
-| `[io].answer_dir` | `cmp_b` | 按测试点名取期望答案的目录，用 `<name>.ans` 或 `<name>.out`（都在时用 `.ans`） |
-| `[io].result_root` | `cmp_*` `view_*` `rman_*` `tman_*` `pin_*` | 比较结果仓库：`<root>/single` 存单次比较，`<root>/batch` 存批量 run |
-| `[io].single_name` | `cmp_s` | 存档时用的名字；缺省取 `[io].single_input` 的文件名 |
-| `[io].single_max_count` | `cmp_s` `rman_s` | 单次比较库最多留多少条（保护的不计入，`0` 为不限） |
-| `[io].batch_max_count` | `cmp_b` `rman_b` | 批量库最多留多少个 run（同上） |
-| `[io].trash_max_bytes` | `tman_*` 及其余管理工具 | 回收站最多占多少字节，超了删最早进的（`0` 表示不限） |
-| `[io].colorize_output` | `cg_s` / `cg_i` | 是否给程序自身输出染色（默认 `true`） |
-| `[io].merge_stderr` | `cg_*` | 是否把 stderr 也写进输出文件；不写就各自维持现状（见上文「stderr 要不要进输出文件」） |
-| `[io].print_input` | `cg_s` | 回显时是否先把输入打出来；默认 `false`（只打输出） |
-| `[thread].thread_max` | `cg_b` | 并发测试点数，同时受 CPU 核心数限制 |
+| 键                         | 谁需要                                     | 说明                                                                                    |
+| -------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `base`（顶层）             | 全部                                       | 文件里所有相对路径的起点；缺省为配置文件所在目录                                        |
+| `[compiler].source`        | `cg_*`                                     | 源文件                                                                                  |
+| `[compiler].output`        | `cg_b`（关掉注入时 `cg_s` / `cg_i` 也用）  | 原版可执行文件输出路径                                                                  |
+| `[compiler].output_probe`  | `cg_s` / `cg_i`                            | 注入版输出路径；缺省由 `output` 派生，必须与 `output` 不同                              |
+| `[compiler].args`          | `cg_*`                                     | 完整编译命令；源码与 `-o <output>` 会自动追加。默认 `g++ -std=c++17`                    |
+| `[compiler].force_rebuild` | `cg_*`                                     | `true` 时每次运行都重新编译，等于总是加 `-f`；默认 `false`（增量）                      |
+| `[inject].enabled`         | `cg_s` / `cg_i`                            | 是否注入 `probe.h`（默认 `true`）；关掉就不需要头文件                                   |
+| `[inject].header`          | `cg_s` / `cg_i`                            | 要注入的头文件；缺省按 `base`、配置文件目录、`.exe` 目录依次找 `include/inject/probe.h` |
+| `[runner].work_dir`        | `cg_*`                                     | 运行目录；每个测试点还会在它下面各占一个子目录                                          |
+| `[runner].time_limit_ms`   | `cg_*`                                     | CPU 时间上限；不写就永远不杀超时程序                                                    |
+| `[runner].memory_limit_mb` | `cg_*`                                     | 内存上限；`0` 表示不限                                                                  |
+| `[io].input_dir`           | `cg_b` `cmp_b` `clean_dir`                 | 存放 `*.in` 的目录                                                                      |
+| `[io].output_dir`          | `cg_b` `cmp_b` `clean_dir`                 | 存放 `*.out` 的目录                                                                     |
+| `[io].single_input`        | `cg_s`                                     | `cg_s` 的输入文件                                                                       |
+| `[io].single_output`       | `cg_s` / `cg_i` / `cmp_s`                  | 程序输出落盘的位置，也是 `cmp_s` 要比对的一侧                                           |
+| `[io].single_answer`       | `cmp_s`                                    | 期望答案；只影响比较                                                                    |
+| `[io].answer_dir`          | `cmp_b`                                    | 按测试点名取期望答案的目录，用 `<name>.ans` 或 `<name>.out`（都在时用 `.ans`）          |
+| `[io].result_root`         | `cmp_*` `view_*` `rman_*` `tman_*` `pin_*` | 比较结果仓库：`<root>/single` 存单次比较，`<root>/batch` 存批量 run                     |
+| `[io].single_name`         | `cmp_s`                                    | 存档时用的名字；缺省取 `[io].single_input` 的文件名                                     |
+| `[io].single_max_count`    | `cmp_s` `rman_s`                           | 单次比较库最多留多少条（保护的不计入，`0` 为不限）                                      |
+| `[io].batch_max_count`     | `cmp_b` `rman_b`                           | 批量库最多留多少个 run（同上）                                                          |
+| `[io].trash_max_bytes`     | `tman_*` 及其余管理工具                    | 回收站最多占多少字节，超了删最早进的（`0` 表示不限）                                    |
+| `[io].colorize_output`     | `cg_s` / `cg_i`                            | 是否给程序自身输出染色（默认 `true`）                                                   |
+| `[io].merge_stderr`        | `cg_*`                                     | 是否把 stderr 也写进输出文件；不写就各自维持现状（见上文「stderr 要不要进输出文件」）   |
+| `[io].print_input`         | `cg_s`                                     | 回显时是否先把输入打出来；默认 `false`（只打输出）                                      |
+| `[thread].thread_max`      | `cg_b`                                     | 并发测试点数，同时受 CPU 核心数限制                                                     |
