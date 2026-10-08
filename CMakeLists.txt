@@ -19,6 +19,7 @@ set(BASE_SOURCES
   src/base/file.cpp
   src/base/hash.cpp
   src/base/terminal.cpp
+  src/base/path.cpp
 )
 
 set(IO_SOURCES

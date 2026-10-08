@@ -1,5 +1,6 @@
 #include "io/config.hpp"
 #include "base/text.hpp"
+#include "base/path.hpp"
 #include "toml.hpp"
 
 #include <windows.h>
@@ -17,8 +18,8 @@ namespace {
 std::filesystem::path resolve(const std::filesystem::path &base,
                               const std::filesystem::path &p) {
   if (p.empty() || p.is_absolute())
-    return p;
-  return base / p;
+    return compress_path(p);
+  return compress_path(base / p);
 }
 
 std::filesystem::path module_dir() {
@@ -40,8 +41,8 @@ std::filesystem::path module_dir() {
 }
 
 std::filesystem::path derive_probe_path(const std::filesystem::path &p) {
-  return p.parent_path() /
-         (p.stem().string() + ".probe" + p.extension().string());
+  return compress_path(p.parent_path() /
+                       (p.stem().string() + ".probe" + p.extension().string()));
 }
 
 std::filesystem::path read_pointer(const std::filesystem::path &link) {
@@ -79,8 +80,8 @@ std::filesystem::path read_pointer(const std::filesystem::path &link) {
 
     const std::filesystem::path target(trimmed);
     if (target.is_absolute())
-      return target;
-    return link.parent_path() / target;
+      return compress_path(target);
+    return compress_path(link.parent_path() / target);
   }
   return {};
 }
@@ -98,10 +99,7 @@ bool is_link_file(const std::filesystem::path &p) {
 }
 
 std::string path_key(const std::filesystem::path &p) {
-  std::error_code ec;
-  std::filesystem::path canon = std::filesystem::weakly_canonical(p, ec);
-  if (ec)
-    canon = std::filesystem::absolute(p, ec).lexically_normal();
+  std::filesystem::path canon = compress_path(p, true, true);
   return text::to_lower(canon.string());
 }
 
@@ -154,7 +152,7 @@ LocatedConfig follow_chain(const std::filesystem::path &start) {
       if (std::filesystem::is_regular_file(candidate, cand_ec)) {
         std::error_code abs_ec;
         const std::filesystem::path clean =
-            std::filesystem::absolute(candidate, abs_ec).lexically_normal();
+            compress_path(candidate, abs_ec, false, true);
         found.path = abs_ec ? candidate : clean;
         found.note = "using " + found.path.string() + " (followed " +
                      chain_text(chain) + " ans found config.toml in directory)";
@@ -170,7 +168,7 @@ LocatedConfig follow_chain(const std::filesystem::path &start) {
     if (!is_link_file(target)) {
       std::error_code abs_ec;
       const std::filesystem::path clean =
-          std::filesystem::absolute(target, abs_ec).lexically_normal();
+          compress_path(target, abs_ec, false, true);
       found.path = abs_ec ? target : clean;
       found.note = "using " + found.path.string() + " (followed " +
                    chain_text(chain) + ")";
@@ -204,7 +202,7 @@ LocatedConfig locate_config(const std::filesystem::path &requested) {
   const bool defaulted = !requested.is_absolute() &&
                          requested == std::filesystem::path("config.toml");
   if (defaulted) {
-    const std::filesystem::path beside = exe / "config.toml";
+    const std::filesystem::path beside = compress_path(exe / "config.toml");
     if (std::filesystem::is_regular_file(beside, ec)) {
       found.path = beside;
       found.note = "using " + beside.string() + " (next to the executable)";
@@ -212,7 +210,7 @@ LocatedConfig locate_config(const std::filesystem::path &requested) {
     }
   }
 
-  const std::filesystem::path link = exe / "config.link";
+  const std::filesystem::path link = compress_path(exe / "config.link");
   if (std::filesystem::is_regular_file(link, ec))
     return follow_chain(link);
   return found;
@@ -343,7 +341,7 @@ ConfigResult load_config(const std::filesystem::path &path) {
   });
 
   const std::filesystem::path config_dir =
-      std::filesystem::absolute(config).parent_path();
+      compress_path(config, false, true).parent_path();
   std::string raw_base;
   if (auto v = tbl["base"].value<std::string>())
     raw_base = *v;
@@ -351,9 +349,7 @@ ConfigResult load_config(const std::filesystem::path &path) {
   std::filesystem::path base = config_dir;
   if (!raw_base.empty())
     base = resolve(config_dir, std::filesystem::path(raw_base));
-  std::error_code base_ec;
-  base = std::filesystem::absolute(base, base_ec).lexically_normal();
-  c.base = base;
+  c.base = compress_path(base, false, true);
 
   resolve_all(base, c.source_path, c.exe_path, c.exe_path_probe, c.work_dir,
               c.input_dir, c.output_dir, c.single_input, c.single_output,
@@ -368,17 +364,17 @@ ConfigResult load_config(const std::filesystem::path &path) {
     const auto at_config = config_dir / "include" / "inject" / "probe.h";
     const auto at_tool = module_dir() / "include" / "inject" / "probe.h";
     if (std::filesystem::exists(at_base, ec))
-      c.inject_header = at_base;
+      c.inject_header = compress_path(at_base);
     else if (std::filesystem::exists(at_config, ec))
-      c.inject_header = at_config;
+      c.inject_header = compress_path(at_config);
     else if (!at_tool.empty() && std::filesystem::exists(at_tool, ec))
-      c.inject_header = at_tool;
+      c.inject_header = compress_path(at_tool);
     else
-      c.inject_header = at_base;
+      c.inject_header = compress_path(at_base);
   }
 
   if (!c.inject_probe)
-    c.exe_path_probe = c.exe_path;
+    c.exe_path_probe = compress_path(c.exe_path);
 
   r.success = true;
   r.message = "OK";
