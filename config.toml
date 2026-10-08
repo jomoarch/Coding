@@ -13,8 +13,8 @@ args = ["g++", "-std=c++17", "-O2", "-Wall", "-Wextra"] # 源码与 -o <output> 
 force_rebuild = false                                   # true = 每次运行都重新编译
 
 [inject]
-enabled = true                    # 关掉就不需要下面的头文件
-header = "include/inject/probe.h" # 删掉这行就自动去 base、配置目录、exe 目录找
+enabled = true            # 关掉就不需要下面的头文件
+header = "inject/probe.h" # 删掉这行就自动去 base、配置目录、exe 目录找
 
 [runner]
 work_dir = "test/work" # 每个测试点还会在它下面各占一个子目录
