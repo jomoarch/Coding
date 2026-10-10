@@ -146,6 +146,8 @@ void Bar::write_output(std::string_view data) {
   place(anchor_);
   write_bytes(data);
 
+  painted_ = false;
+
   Pos after{};
   int top = 0;
   if (cursor_now(after, top)) {
@@ -256,14 +258,23 @@ void Bar::paint() {
     cursor_columns = std::min(cursor_columns, room);
   }
 
-  erase_ours();
+  const bool echo_changed = !painted_ || painted_input_ != input_text_ ||
+                            painted_cursor_ != input_cursor_columns_;
+  const bool status_changed = !painted_ || painted_status_ != status_text_;
 
-  place(anchor_);
-  write_bytes(echo);
+  if (echo_changed) {
+    place(anchor_);
+    write_bytes(echo);
+    write_bytes("\x1b[K");
+  }
 
-  place(Pos{anchor_.row + 1, 0});
-  write_bytes("\x1b[2K");
-  write_bytes(status_text_);
+  if (status_changed) {
+
+    place(Pos{anchor_.row + 1, 0});
+    write_bytes("\x1b[7m");
+    write_bytes(status_text_);
+    write_bytes("\x1b[K\x1b[0m");
+  }
 
   place(Pos{anchor_.row, static_cast<int>(cursor_columns)});
 

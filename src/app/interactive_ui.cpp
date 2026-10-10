@@ -3,6 +3,7 @@
 #include "app/console_bar.hpp"
 #include "app/line_edit.hpp"
 #include "app/status_line.hpp"
+#include "base/color.hpp"
 #include "base/terminal.hpp"
 #include "monitor/monitor.hpp"
 
@@ -78,13 +79,23 @@ bool run(const AppConfig &cfg, const SingleRunOption &base,
     shared.started = true;
   };
 
-  opt.on_output = [&shared](const char *data, std::size_t n, bool) {
+  opt.on_output = [&shared, &base](const char *data, std::size_t n,
+                                   bool is_stderr) {
+    std::string chunk;
+    if (base.colorize_output) {
+      const color::Style style(
+          {is_stderr ? color::Code::Red : color::Code::Green});
+      chunk = style(std::string_view(data, n));
+    } else {
+      chunk.assign(data, n);
+    }
+
     std::lock_guard<std::mutex> lock(shared.m);
-    if (shared.pending.size() + n > kMaxPending) {
-      shared.dropped += n;
+    if (shared.pending.size() + chunk.size() > kMaxPending) {
+      shared.dropped += chunk.size();
       return;
     }
-    shared.pending.append(data, n);
+    shared.pending += chunk;
   };
 
   opt.stdin_source = [&shared](char *buf, std::size_t n) -> std::size_t {
