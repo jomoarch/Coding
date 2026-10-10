@@ -314,6 +314,9 @@ ConfigResult load_config(const std::filesystem::path &path) {
     read_field_as<int64_t>(
         t, "memory_limit_mb", c.memory_limit_bytes,
         [](int64_t v) { return static_cast<std::size_t>(v) * 1024 * 1024; });
+    read_field(t, "status_line", c.status_line);
+    read_field_as<int64_t>(t, "status_interval_ms", c.status_interval_ms,
+                           [](int64_t v) { return static_cast<int>(v); });
   });
 
   // [io]

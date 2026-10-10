@@ -17,9 +17,11 @@ enabled = true            # 关掉就不需要下面的头文件
 header = "inject/probe.h" # 删掉这行就自动去 base、配置目录、exe 目录找
 
 [runner]
-work_dir = "test/work" # 每个测试点还会在它下面各占一个子目录
-time_limit_ms = 1000   # CPU_time 上限；删掉这行或设置为 0 就永远不杀超时程序
-memory_limit_mb = 256  # 0 = 不限
+work_dir = "test/work"   # 每个测试点还会在它下面各占一个子目录
+time_limit_ms = 1000     # CPU_time 上限；删掉这行或设置为 0 就永远不杀超时程序
+memory_limit_mb = 256    # 0 = 不限
+status_line = true       # i 模式：输入行下面钉一行状态（[|] cpu 123 ms），只在运行时显示
+status_interval_ms = 100 # 状态行刷新间隔（毫秒）
 
 [io]
 input_dir = "test/in"                   # 存放 *.in 的目录

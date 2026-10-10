@@ -35,6 +35,10 @@ set(PROCESS_SOURCES
   src/process/process_launcher.cpp
 )
 
+set(MONITOR_SOURCES
+  src/monitor/monitor.cpp
+)
+
 set(APP_SOURCES
   src/app/app.cpp
   src/app/builder.cpp
@@ -44,6 +48,10 @@ set(APP_SOURCES
   src/app/modes.cpp
   src/app/prompt.cpp
   src/app/stale_exe.cpp
+  src/app/status_line.cpp
+  src/app/console_bar.cpp
+  src/app/interactive_ui.cpp
+  src/app/line_edit.cpp
   src/app/viewer.cpp
 )
 
@@ -80,6 +88,7 @@ add_library(coding_common STATIC
   ${BASE_SOURCES}
   ${IO_SOURCES}
   ${PROCESS_SOURCES}
+  ${MONITOR_SOURCES}
   ${COMPARE_SOURCES}
   ${STORE_SOURCES}
   ${APP_SOURCES}

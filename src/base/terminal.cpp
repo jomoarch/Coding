@@ -56,13 +56,14 @@ Session &Session::operator=(Session &&other) noexcept {
   saved_input_mode_ = other.saved_input_mode_;
   saved_output_cp_ = other.saved_output_cp_;
   active_ = other.active_;
+  alt_ = other.alt_;
   other.active_ = false;
   if (active_)
     g_active = this;
   return *this;
 }
 
-bool Session::open(Session &out, std::string &error) {
+bool Session::open(Session &out, std::string &error, Screen screen) {
   const HANDLE in = GetStdHandle(STD_INPUT_HANDLE);
   const HANDLE os = GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -96,9 +97,12 @@ bool Session::open(Session &out, std::string &error) {
   g_active = &out;
   out.active_ = true;
 
-  raw_write(os, kAltScreenOn);
-  raw_write(os, kCursorHide);
-  raw_write(os, kClear);
+  out.alt_ = screen == Screen::Alternate;
+  if (out.alt_) {
+    raw_write(os, kAltScreenOn);
+    raw_write(os, kCursorHide);
+    raw_write(os, kClear);
+  }
   return true;
 }
 
@@ -110,7 +114,8 @@ void Session::close() noexcept {
     g_active = nullptr;
 
   const HANDLE os = static_cast<HANDLE>(output_);
-  raw_write(os, std::string(kCursorShow) + kAltScreenOff);
+  if (alt_)
+    raw_write(os, std::string(kCursorShow) + kAltScreenOff);
 
   SetConsoleMode(static_cast<HANDLE>(input_),
                  static_cast<DWORD>(saved_input_mode_));
@@ -134,15 +139,29 @@ void Session::write(std::string_view frame) const {
   raw_write(static_cast<HANDLE>(output_), frame);
 }
 
-bool Session::read(Key &out) const { return read_key(out, false, nullptr); }
-
-bool Session::read_any(Key &out, char32_t &text) const {
-  return read_key(out, true, &text);
+bool Session::read(Key &out) const {
+  return read_key(out, false, nullptr, kWaitForever);
 }
 
-bool Session::read_key(Key &out, bool raw, char32_t *text) const {
+bool Session::read_any(Key &out, char32_t &text) const {
+  return read_key(out, true, &text, kWaitForever);
+}
+
+bool Session::read_any(Key &out, char32_t &text, unsigned timeout_ms) const {
+  return read_key(out, true, &text, timeout_ms);
+}
+
+bool Session::read_key(Key &out, bool raw, char32_t *text,
+                       unsigned timeout_ms) const {
   const HANDLE in = static_cast<HANDLE>(input_);
   for (;;) {
+    if (WaitForSingleObject(in, static_cast<DWORD>(timeout_ms)) !=
+        WAIT_OBJECT_0)
+      return false;
+
+    if (timeout_ms != kWaitForever)
+      timeout_ms = 0;
+
     INPUT_RECORD record{};
     DWORD got = 0;
     if (!ReadConsoleInputW(in, &record, 1, &got) || got == 0)

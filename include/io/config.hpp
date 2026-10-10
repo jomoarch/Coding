@@ -30,6 +30,8 @@ struct AppConfig {
   std::filesystem::path work_dir;
   std::chrono::milliseconds time_limit{0};
   std::size_t memory_limit_bytes{0};
+  bool status_line{true};
+  int status_interval_ms{100};
 
   // io
   std::filesystem::path input_dir;

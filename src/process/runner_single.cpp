@@ -48,11 +48,27 @@ void write_styled(bool colorize, const color::Style *style, const char *data,
   std::cout.flush();
 }
 
-void pump_both(HANDLE hOut, HANDLE hErr, bool echo, bool colorize,
-               const color::Style *out_style, const color::Style *err_style,
+struct Sink {
+  bool echo{true};
+  bool colorize{false};
+  const color::Style *out_style{nullptr};
+  const color::Style *err_style{nullptr};
+  std::function<void(const char *, std::size_t, bool)> on_output;
+
+  void write(const char *data, std::size_t n, bool is_stderr) const {
+    if (on_output) {
+      on_output(data, n, is_stderr);
+      return;
+    }
+    if (!echo)
+      return;
+    write_styled(colorize, is_stderr ? err_style : out_style, data, n);
+  }
+};
+
+void pump_both(HANDLE hOut, HANDLE hErr, const Sink &sink,
                std::string *out_sink, bool merge_err) {
   HANDLE handles[2] = {hOut, hErr};
-  const color::Style *styles[2] = {out_style, err_style};
   bool alive[2] = {true, true};
 
   std::vector<char> buf(4096);
@@ -88,20 +104,14 @@ void pump_both(HANDLE hOut, HANDLE hErr, bool echo, bool colorize,
     if (out_sink && (i == 0 || merge_err))
       out_sink->append(buf.data(), n);
 
-    if (!echo)
-      continue;
-
-    write_styled(colorize, styles[i], buf.data(), n);
+    sink.write(buf.data(), n, i == 1);
   }
 }
 
 class TagSplitter {
 public:
-  TagSplitter(bool echo, bool colorize, const color::Style *out_style,
-              const color::Style *err_style, std::string *out_sink,
-              bool merge_err)
-      : echo_(echo), colorize_(colorize), out_style_(out_style),
-        err_style_(err_style), out_sink_(out_sink), merge_err_(merge_err) {}
+  TagSplitter(const Sink &sink, std::string *out_sink, bool merge_err)
+      : sink_(sink), out_sink_(out_sink), merge_err_(merge_err) {}
 
   void feed(const char *data, std::size_t n) {
     bytes_ += n;
@@ -128,21 +138,16 @@ private:
     if (current_ == kFramedStderr) {
       if (merge_err_ && out_sink_)
         out_sink_->append(data, n);
-      if (echo_)
-        write_styled(colorize_, err_style_, data, n);
+      sink_.write(data, n, true);
       return;
     }
 
     if (out_sink_)
       out_sink_->append(data, n);
-    if (echo_)
-      write_styled(colorize_, out_style_, data, n);
+    sink_.write(data, n, false);
   }
 
-  bool echo_;
-  bool colorize_;
-  const color::Style *out_style_;
-  const color::Style *err_style_;
+  const Sink &sink_;
   std::string *out_sink_;
   bool merge_err_;
   char current_{kFramedStdout};
@@ -358,21 +363,52 @@ SingleRunResult run_single(const SingleRunOption &opts) {
   const color::Style stdout_style({color::Code::Green});
   const color::Style stderr_style({color::Code::Red});
 
+  Sink sink;
+  sink.echo = opts.echo;
+  sink.colorize = opts.colorize_output;
+  sink.out_style = &stdout_style;
+  sink.err_style = &stderr_style;
+  sink.on_output = opts.on_output;
+
+  if (opts.on_started)
+    opts.on_started(pi.hProcess, hJob.get());
+
   std::string captured;
   std::string raw_err;
-  TagSplitter splitter(opts.echo, opts.colorize_output, &stdout_style,
-                       &stderr_style, &captured, opts.merge_stderr);
+  TagSplitter splitter(sink, &captured, opts.merge_stderr);
 
   std::thread pump;
   if (opts.tagged_stream)
     pump = std::thread(pump_tagged, hOutRead.get(), hErrRead.get(),
                        std::ref(splitter), &raw_err);
   else
-    pump = std::thread(pump_both, hOutRead.get(), hErrRead.get(), opts.echo,
-                       opts.colorize_output, &stdout_style, &stderr_style,
-                       &captured, opts.merge_stderr);
+    pump = std::thread(pump_both, hOutRead.get(), hErrRead.get(),
+                       std::cref(sink), &captured, opts.merge_stderr);
 
-  if (opts.stdin_from_console && stdin_is_console && hStdinWrite.valid()) {
+  if (opts.stdin_source && hStdinWrite.valid()) {
+
+    stdin_forwarder = std::thread([&]() {
+      std::vector<char> buf(4096);
+      while (!stdin_stop.load(std::memory_order_relaxed)) {
+        const std::size_t want = opts.stdin_source(buf.data(), buf.size());
+        if (want == 0)
+          break;
+        std::size_t done = 0;
+        while (done < want) {
+          DWORD wrote = 0;
+          if (!WriteFile(hStdinWrite.get(), buf.data() + done,
+                         static_cast<DWORD>(want - done), &wrote, nullptr) ||
+              wrote == 0)
+            break;
+          done += wrote;
+        }
+        if (done < want)
+          break;
+      }
+      hStdinWrite.reset();
+    });
+  } else if (opts.stdin_from_console && stdin_is_console &&
+             hStdinWrite.valid()) {
     stdin_forwarder = std::thread([&]() {
       std::vector<char> fbuf(4096);
       std::vector<char> batch;
@@ -407,8 +443,6 @@ SingleRunResult run_single(const SingleRunOption &opts) {
         if (batch.empty())
           continue;
 
-        // No echo here: the console already echoed it as it was typed, and
-        // echoing again would print every line twice.
         DWORD written = 0;
         if (!::WriteFile(hStdinWrite.get(), batch.data(),
                          static_cast<DWORD>(batch.size()), &written, nullptr) ||

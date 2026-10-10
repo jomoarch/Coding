@@ -3,6 +3,7 @@
 #include "app/builder.hpp"
 #include "app/formatter.hpp"
 #include "app/prompt.hpp"
+#include "app/interactive_ui.hpp"
 #include "io/iofile.hpp"
 #include "process/runner_batch.hpp"
 #include "process/runner_single.hpp"
@@ -191,13 +192,17 @@ int run_interactive(const AppConfig &cfg) {
   SingleRunOption opt;
   opt.exe_path = cfg.exe_path_probe;
   opt.work_dir = cfg.work_dir;
-  opt.stdin_from_console = true;
   opt.echo = true;
   opt.colorize_output = cfg.colorize_output;
   opt.tagged_stream = uses_probe_build(cfg);
   opt.merge_stderr = cfg.merge_stderr == 1;
 
-  return finish_single(cfg, run_single(opt));
+  SingleRunResult run;
+  if (!cfg.status_line || !interactive::run(cfg, opt, run)) {
+    opt.stdin_from_console = true;
+    run = run_single(opt);
+  }
+  return finish_single(cfg, run);
 }
 
 int run_single_file(const AppConfig &cfg) {
