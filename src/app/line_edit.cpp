@@ -69,8 +69,36 @@ void Editor::move_left() { cursor = step_back(buffer, cursor); }
 
 void Editor::move_right() { cursor = step_forward(buffer, cursor); }
 
+void Editor::insert_text(std::string_view text) {
+  if (text.empty())
+    return;
+  buffer.insert(cursor, text);
+  cursor += text.size();
+}
+
 std::size_t Editor::cursor_columns() const {
   return text::display_width(std::string_view(buffer).substr(0, cursor));
+}
+
+Paste split_paste(std::string_view text) {
+  Paste out;
+  std::size_t start = 0;
+  for (;;) {
+    const std::size_t end = text.find('\n', start);
+    std::string_view piece = end == std::string_view::npos
+                                 ? text.substr(start)
+                                 : text.substr(start, end - start);
+    if (!piece.empty() && piece.back() == '\r')
+      piece.remove_suffix(1);
+
+    if (end == std::string_view::npos) {
+      out.tail.assign(piece);
+      break;
+    }
+    out.lines.emplace_back(piece);
+    start = end + 1;
+  }
+  return out;
 }
 
 Outcome Editor::feed(term::Key key, char32_t ch) {

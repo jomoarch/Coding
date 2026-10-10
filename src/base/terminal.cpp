@@ -247,6 +247,16 @@ bool Session::read_key(Key &out, bool raw, char32_t *text,
     case 'C':
       out = ctrl ? Key::Quit : Key::Collapse;
       return true;
+    case 'V':
+      // Only reached for Ctrl+V: a plain 'v' comes back as text above.
+      out = Key::Paste;
+      return true;
+    case VK_INSERT:
+      if (shift) {
+        out = Key::Paste;
+        return true;
+      }
+      break;
     case 'R':
       out = Key::CollapseAll;
       return true;

@@ -1,5 +1,6 @@
 #include "app/interactive_ui.hpp"
 
+#include "app/clipboard.hpp"
 #include "app/console_bar.hpp"
 #include "app/line_edit.hpp"
 #include "app/status_line.hpp"
@@ -50,6 +51,31 @@ struct Shared {
   bool started{false};
   std::chrono::steady_clock::time_point start{};
 };
+
+void submit_line(line::Editor &editor, Shared &shared, bar::Bar &bar) {
+  {
+    std::lock_guard<std::mutex> lock(shared.m);
+    shared.lines.push_back(editor.buffer + "\n");
+  }
+  bar.commit_line();
+  editor.clear();
+  bar.set_input(editor.text(), editor.cursor_columns());
+  shared.cv.notify_all();
+}
+
+void submit_paste(std::string text, line::Editor &editor, Shared &shared,
+                  bar::Bar &bar) {
+  if (text.empty())
+    return;
+
+  const line::Paste paste = line::split_paste(text);
+  for (const std::string &one : paste.lines) {
+    editor.insert_text(one);
+    submit_line(editor, shared, bar);
+  }
+  editor.insert_text(paste.tail);
+  bar.set_input(editor.text(), editor.cursor_columns());
+}
 
 } // namespace
 
@@ -145,19 +171,13 @@ bool run(const AppConfig &cfg, const SingleRunOption &base,
     for (int i = 0; got && i < kMaxKeysPerPass; ++i) {
       if (key == term::Key::Resize) {
         bar.resize();
+      } else if (key == term::Key::Paste) {
+
+        submit_paste(clipboard::text(), editor, shared, bar);
       } else {
         const line::Outcome action = editor.feed(key, ch);
         if (action == line::Outcome::Submitted) {
-          {
-            std::lock_guard<std::mutex> lock(shared.m);
-            shared.lines.push_back(editor.buffer + "\n");
-          }
-
-          bar.commit_line();
-          editor.clear();
-          bar.set_input(editor.text(), editor.cursor_columns());
-          bar.paint();
-          shared.cv.notify_all();
+          submit_line(editor, shared, bar);
         } else if (action == line::Outcome::Interrupt && !interrupted) {
           interrupted = true;
           {

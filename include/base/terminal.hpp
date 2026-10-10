@@ -20,6 +20,7 @@ enum class Key {
   Backspace,
   Collapse,
   CollapseAll,
+  Paste,
   Quit,
   Resize,
   Text

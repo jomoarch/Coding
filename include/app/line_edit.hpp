@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace coding {
 
@@ -18,6 +19,8 @@ struct Editor {
   std::size_t cursor{0};
 
   Outcome feed(term::Key key, char32_t ch);
+
+  void insert_text(std::string_view text);
 
   void clear() noexcept {
     buffer.clear();
@@ -36,6 +39,13 @@ private:
 };
 
 std::string encode_utf8(char32_t ch);
+
+struct Paste {
+  std::vector<std::string> lines;
+  std::string tail;
+};
+
+Paste split_paste(std::string_view text);
 
 } // namespace line
 } // namespace coding

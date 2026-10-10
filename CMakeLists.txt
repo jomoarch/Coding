@@ -49,6 +49,7 @@ set(APP_SOURCES
   src/app/prompt.cpp
   src/app/stale_exe.cpp
   src/app/status_line.cpp
+  src/app/clipboard.cpp
   src/app/console_bar.cpp
   src/app/interactive_ui.cpp
   src/app/line_edit.cpp
