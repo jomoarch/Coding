@@ -64,6 +64,8 @@ private:
   std::size_t painted_cursor_{0};
   std::string painted_status_;
   bool painted_{false};
+  int painted_status_row_{-1};
+  std::size_t painted_area_rows_{0};
   bool cursor_hidden_{false};
 };
 

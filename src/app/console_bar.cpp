@@ -264,9 +264,12 @@ void Bar::paint() {
 
   ensure_room(laid.rows.size());
 
+  const int status_row = anchor_.row + static_cast<int>(laid.rows.size());
+
   const bool echo_changed = !painted_ || painted_input_ != input_text_ ||
                             painted_cursor_ != input_cursor_bytes_;
-  const bool status_changed = !painted_ || painted_status_ != status_text_;
+  const bool status_changed = !painted_ || painted_status_ != status_text_ ||
+                              painted_status_row_ != status_row;
 
   if (echo_changed) {
     for (std::size_t i = 0; i < laid.rows.size(); ++i) {
@@ -278,10 +281,19 @@ void Bar::paint() {
   }
 
   if (status_changed) {
-    place(Pos{anchor_.row + static_cast<int>(laid.rows.size()), 0});
+
+    place(Pos{status_row, 0});
     write_bytes("\x1b[7m");
     write_bytes(status_text_);
     write_bytes("\x1b[K\x1b[0m");
+  }
+
+  const std::size_t area_rows = laid.rows.size() + 1;
+  if (painted_ && painted_area_rows_ > area_rows) {
+    for (std::size_t r = area_rows; r < painted_area_rows_; ++r) {
+      place(Pos{anchor_.row + static_cast<int>(r), 0});
+      write_bytes("\x1b[K");
+    }
   }
 
   place(Pos{anchor_.row + static_cast<int>(laid.caret_row),
@@ -292,6 +304,8 @@ void Bar::paint() {
   painted_input_ = input_text_;
   painted_cursor_ = input_cursor_bytes_;
   painted_status_ = status_text_;
+  painted_status_row_ = status_row;
+  painted_area_rows_ = area_rows;
 }
 } // namespace bar
 } // namespace coding
