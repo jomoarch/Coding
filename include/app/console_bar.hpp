@@ -44,6 +44,8 @@ private:
   void write_bytes(std::string_view bytes) const;
   bool cursor_now(Pos &out, int &window_top) const;
   void erase_ours();
+  void hide_cursor();
+  void show_cursor();
   void make_room_for_status();
   bool skip_for_selection() const;
   std::size_t echo_columns() const;
@@ -63,6 +65,7 @@ private:
   std::size_t painted_cursor_{0};
   std::string painted_status_;
   bool painted_{false};
+  bool cursor_hidden_{false};
 };
 
 } // namespace bar

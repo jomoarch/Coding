@@ -68,6 +68,7 @@ void Bar::close() noexcept {
   active_ = false;
   erase_ours();
   place(anchor_);
+  show_cursor();
 }
 
 void Bar::place(const Pos &at) const {
@@ -136,11 +137,27 @@ void Bar::erase_ours() {
   }
 }
 
+void Bar::hide_cursor() {
+  if (cursor_hidden_)
+    return;
+  cursor_hidden_ = true;
+  write_bytes("\x1b[?25l");
+}
+
+void Bar::show_cursor() {
+  if (!cursor_hidden_)
+    return;
+  cursor_hidden_ = false;
+  write_bytes("\x1b[?25h");
+}
+
 void Bar::write_output(std::string_view data) {
   if (!active_ || data.empty())
     return;
   if (skip_for_selection())
     return;
+
+  hide_cursor();
 
   erase_ours();
   place(anchor_);
@@ -233,6 +250,8 @@ void Bar::paint() {
       painted_status_ == status_text_)
     return;
 
+  hide_cursor();
+
   if (anchor_.row + 1 >= static_cast<int>(rows_))
     make_room_for_status();
 
@@ -262,6 +281,8 @@ void Bar::paint() {
                             painted_cursor_ != input_cursor_columns_;
   const bool status_changed = !painted_ || painted_status_ != status_text_;
 
+  hide_cursor();
+
   if (echo_changed) {
     place(anchor_);
     write_bytes(echo);
@@ -269,7 +290,6 @@ void Bar::paint() {
   }
 
   if (status_changed) {
-
     place(Pos{anchor_.row + 1, 0});
     write_bytes("\x1b[7m");
     write_bytes(status_text_);
@@ -277,6 +297,7 @@ void Bar::paint() {
   }
 
   place(Pos{anchor_.row, static_cast<int>(cursor_columns)});
+  show_cursor();
 
   painted_ = true;
   painted_input_ = input_text_;
