@@ -38,9 +38,8 @@ struct Shared {
   std::string pending;
   std::size_t dropped{0};
 
-  std::deque<std::string> lines;
-  std::string current;
-  std::size_t current_at{0};
+  std::string input;
+  std::size_t input_at{0};
   bool eof{false};
 
   std::atomic<bool> stop{false};
@@ -52,31 +51,32 @@ struct Shared {
   std::chrono::steady_clock::time_point start{};
 };
 
-void submit_line(line::Editor &editor, Shared &shared, bar::Bar &bar) {
+void queue_input(Shared &shared, std::string_view text) {
+  if (text.empty())
+    return;
   {
     std::lock_guard<std::mutex> lock(shared.m);
-    shared.lines.push_back(editor.buffer + "\n");
+    shared.input.append(text);
   }
-  bar.commit_line();
-  editor.clear();
-  bar.set_input(editor.text(), editor.cursor_columns());
   shared.cv.notify_all();
+}
+
+void submit_line(line::Editor &editor, Shared &shared, bar::Bar &bar) {
+  const std::string text = editor.buffer + "\n";
+  queue_input(shared, text);
+  bar.commit_text(text);
+  editor.clear();
+  bar.set_input(editor.text(), editor.cursor);
 }
 
 void submit_paste(std::string text, line::Editor &editor, Shared &shared,
                   bar::Bar &bar) {
+  (void)shared;
   if (text.empty())
     return;
-
-  const line::Paste paste = line::split_paste(text);
-  for (const std::string &one : paste.lines) {
-    editor.insert_text(one);
-    submit_line(editor, shared, bar);
-  }
-  editor.insert_text(paste.tail);
-  bar.set_input(editor.text(), editor.cursor_columns());
+  editor.insert_text(line::clean_paste(text));
+  bar.set_input(editor.text(), editor.cursor);
 }
-
 } // namespace
 
 bool run(const AppConfig &cfg, const SingleRunOption &base,
@@ -127,28 +127,23 @@ bool run(const AppConfig &cfg, const SingleRunOption &base,
   opt.stdin_source = [&shared](char *buf, std::size_t n) -> std::size_t {
     std::unique_lock<std::mutex> lock(shared.m);
     for (;;) {
-      if (shared.current_at < shared.current.size()) {
+      if (shared.input_at < shared.input.size()) {
         const std::size_t take =
-            std::min(n, shared.current.size() - shared.current_at);
-        std::memcpy(buf, shared.current.data() + shared.current_at, take);
-        shared.current_at += take;
-        if (shared.current_at == shared.current.size()) {
-          shared.current.clear();
-          shared.current_at = 0;
+            std::min(n, shared.input.size() - shared.input_at);
+        std::memcpy(buf, shared.input.data() + shared.input_at, take);
+        shared.input_at += take;
+        if (shared.input_at == shared.input.size()) {
+          shared.input.clear();
+          shared.input_at = 0;
         }
         return take;
       }
       if (shared.eof || shared.stop.load(std::memory_order_relaxed))
         return 0;
       shared.cv.wait(lock, [&shared] {
-        return !shared.lines.empty() || shared.eof ||
+        return !shared.input.empty() || shared.eof ||
                shared.stop.load(std::memory_order_relaxed);
       });
-      if (!shared.lines.empty()) {
-        shared.current = std::move(shared.lines.front());
-        shared.lines.pop_front();
-        shared.current_at = 0;
-      }
     }
   };
 
@@ -210,7 +205,7 @@ bool run(const AppConfig &cfg, const SingleRunOption &base,
     }
     if (!chunk.empty())
       bar.write_output(chunk);
-    bar.set_input(editor.text(), editor.cursor_columns());
+    bar.set_input(editor.text(), editor.cursor);
     bar.paint();
   }
 

@@ -80,27 +80,72 @@ std::size_t Editor::cursor_columns() const {
   return text::display_width(std::string_view(buffer).substr(0, cursor));
 }
 
-Paste split_paste(std::string_view text) {
-  Paste out;
-  std::size_t start = 0;
-  for (;;) {
-    const std::size_t end = text.find('\n', start);
-    std::string_view piece = end == std::string_view::npos
-                                 ? text.substr(start)
-                                 : text.substr(start, end - start);
-    if (!piece.empty() && piece.back() == '\r')
-      piece.remove_suffix(1);
-
-    if (end == std::string_view::npos) {
-      out.tail.assign(piece);
-      break;
-    }
-    out.lines.emplace_back(piece);
-    start = end + 1;
+std::string clean_paste(std::string_view text) {
+  std::string out;
+  out.reserve(text.size());
+  for (std::size_t i = 0; i < text.size(); ++i) {
+    const char c = text[i];
+    if (c == '\r' && i + 1 < text.size() && text[i + 1] == '\n')
+      continue;
+    out.push_back(c);
   }
+
+  if (!out.empty() && out.back() == '\n')
+    out.pop_back();
+  if (!out.empty() && out.back() == '\r')
+    out.pop_back();
   return out;
 }
 
+Layout layout_text(std::string_view text, std::size_t cursor_bytes,
+                   std::size_t first_room, std::size_t room) {
+  Layout out;
+
+  const auto clamp_row = [](std::string_view line, std::size_t limit) {
+    std::string row;
+    std::size_t i = 0;
+    while (i < line.size() && line[i] != '\n') {
+      const text::CharWidth w = text::measure(line, i);
+      if (w.bytes == 0 || text::display_width(row) + w.columns > limit)
+        break;
+      row.append(line, i, w.bytes);
+      i += w.bytes;
+    }
+    return row;
+  };
+
+  std::size_t row_start = 0;
+  std::size_t limit = first_room;
+  std::size_t cursor_at = std::min(cursor_bytes, text.size());
+  bool caret_done = false;
+  for (;;) {
+    const std::size_t nl = text.find('\n', row_start);
+    const std::size_t row_end = nl == std::string_view::npos ? text.size() : nl;
+    std::string_view line = text.substr(row_start, row_end - row_start);
+
+    out.rows.push_back(clamp_row(line, limit));
+
+    if (!caret_done && cursor_at >= row_start && cursor_at <= row_end) {
+      out.caret_row = out.rows.size() - 1;
+      const std::size_t taken =
+          std::min(cursor_at - row_start, out.rows.back().size());
+      out.caret_column = text::display_width(
+          std::string_view(out.rows.back()).substr(0, taken));
+      caret_done = true;
+    }
+
+    if (nl == std::string_view::npos)
+      break;
+    row_start = nl + 1;
+    limit = room;
+  }
+
+  if (!caret_done) {
+    out.caret_row = out.rows.size() - 1;
+    out.caret_column = text::display_width(out.rows.back());
+  }
+  return out;
+}
 Outcome Editor::feed(term::Key key, char32_t ch) {
   switch (key) {
   case term::Key::Text:

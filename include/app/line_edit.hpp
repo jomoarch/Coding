@@ -40,12 +40,16 @@ private:
 
 std::string encode_utf8(char32_t ch);
 
-struct Paste {
-  std::vector<std::string> lines;
-  std::string tail;
+std::string clean_paste(std::string_view text);
+
+struct Layout {
+  std::vector<std::string> rows;
+  std::size_t caret_row{0};
+  std::size_t caret_column{0};
 };
 
-Paste split_paste(std::string_view text);
+Layout layout_text(std::string_view text, std::size_t cursor_bytes,
+                   std::size_t first_room, std::size_t room);
 
 } // namespace line
 } // namespace coding

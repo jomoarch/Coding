@@ -25,10 +25,10 @@ public:
 
   void write_output(std::string_view data);
 
-  void set_input(std::string_view text, std::size_t cursor_columns);
+  void set_input(std::string_view text, std::size_t cursor_bytes);
   void set_status(std::string_view text);
 
-  void commit_line();
+  void commit_text(std::string_view text);
 
   void resize();
 
@@ -46,9 +46,8 @@ private:
   void erase_ours();
   void hide_cursor();
   void show_cursor();
-  void make_room_for_status();
+  void ensure_room(std::size_t echo_rows);
   bool skip_for_selection() const;
-  std::size_t echo_columns() const;
 
   void *input_{nullptr};
   void *output_{nullptr};
@@ -58,7 +57,7 @@ private:
 
   Pos anchor_{};
   std::string input_text_;
-  std::size_t input_cursor_columns_{0};
+  std::size_t input_cursor_bytes_{0};
   std::string status_text_;
 
   std::string painted_input_;
